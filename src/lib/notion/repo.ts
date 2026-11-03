@@ -1,4 +1,5 @@
 import "server-only";
+import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { dsId, notion } from "./client";
 import {
@@ -71,8 +72,15 @@ export function getTrip(tripId: string): Promise<Trip | null> {
       try {
         const page = await notion().pages.retrieve({ page_id: tripId });
         return isFullPage(page) ? pageToTrip(page) : null;
-      } catch {
-        return null; // 잘못된 ID / 접근 불가
+      } catch (e) {
+        // 없는 페이지 / 잘못된 ID 만 null. 토큰·환경변수 오류 등은 그대로 던져서 드러낸다.
+        if (
+          APIResponseError.isAPIResponseError(e) &&
+          (e.code === APIErrorCode.ObjectNotFound || e.code === APIErrorCode.ValidationError)
+        ) {
+          return null;
+        }
+        throw e;
       }
     },
     ["trip", tripId],
