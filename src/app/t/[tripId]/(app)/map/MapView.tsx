@@ -3,7 +3,7 @@
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { removePlace, setPlaceVisited } from "@/actions/places";
-import { categoryColor, routeForDay } from "@/lib/map";
+import { categoryColor, dayNumbersByPlace, placesByDay, routeForDay } from "@/lib/map";
 import { dayLabel, directionsUrl } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
 import { GoogleMap } from "./GoogleMap";
@@ -37,7 +37,10 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
     serverPlaces,
     (state, v: { id: string; visited: boolean }) => state.map((p) => (p.id === v.id ? { ...p, visited: v.visited } : p)),
   );
-  const [day, setDay] = useState<string | null>(defaultDay);
+  // 처음엔 오늘/첫날 장소만 보여주되, 그날 연결된 장소가 없거나 특정 장소로 들어왔으면 전체를 보여준다
+  const [day, setDay] = useState<string | null>(() =>
+    !initialPlaceId && defaultDay && placesByDay(items, serverPlaces).has(defaultDay) ? defaultDay : null,
+  );
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaceId);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,6 +48,10 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
 
   const activeDay = day && days.includes(day) ? day : null;
   const route = useMemo(() => routeForDay(items, places, activeDay), [items, places, activeDay]);
+  const byDay = useMemo(() => placesByDay(items, places), [items, places]);
+  const dayNumbers = useMemo(() => dayNumbersByPlace(byDay, days), [byDay, days]);
+  // 날짜를 고르면 그날 일정에 연결된 장소만 (일정 순서대로), 아니면 전체
+  const visiblePlaces = activeDay ? (byDay.get(activeDay) ?? []) : places;
 
   const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>, optimistic?: () => void) => {
     setError(null);
@@ -58,7 +65,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
   return (
     <div className="flex flex-col gap-4">
       {hasKey ? (
-        <GoogleMap places={places} route={route} selectedId={selectedId} onSelect={setSelectedId} />
+        <GoogleMap places={visiblePlaces} route={route} selectedId={selectedId} onSelect={setSelectedId} />
       ) : (
         <div className="rounded-2xl border border-dashed border-border bg-muted p-4 text-sm text-muted-foreground">
           <p className="font-semibold">지도를 보려면 구글 지도 키가 필요해요 🗺️</p>
@@ -71,10 +78,10 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
 
       {days.length > 0 && (
         <div>
-          <p className="mb-1 text-xs text-muted-foreground">경로 보기</p>
+          <p className="mb-1 text-xs text-muted-foreground">날짜별 보기</p>
           <div className="-mx-4 overflow-x-auto px-4">
-            <div className="flex gap-2 pb-1" role="group" aria-label="경로 날짜">
-              <DayChip label="끄기" selected={activeDay === null} onClick={() => setDay(null)} />
+            <div className="flex gap-2 pb-1" role="group" aria-label="날짜">
+              <DayChip label="전체" selected={activeDay === null} onClick={() => setDay(null)} />
               {days.map((d, i) => (
                 <DayChip key={d} label={`Day ${i + 1} · ${dayLabel(d)}`} selected={activeDay === d} onClick={() => setDay(d)} />
               ))}
@@ -82,9 +89,11 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
           </div>
           {activeDay && (
             <p className="mt-1 text-xs text-muted-foreground">
-              {route.length === 0
-                ? "이 날 일정에 좌표가 있는 장소가 없어요."
-                : route.map((s) => `${s.n}. ${s.place.name}`).join(" → ")}
+              {visiblePlaces.length === 0
+                ? "이 날 일정에 연결된 장소가 없어요. 일정에서 장소를 연결하면 여기에 나와요."
+                : route.length === 0
+                  ? "이 날 일정에 좌표가 있는 장소가 없어요."
+                  : route.map((s) => `${s.n}. ${s.place.name}`).join(" → ")}
             </p>
           )}
         </div>
@@ -92,7 +101,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
 
       <section>
         <div className="mb-2 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground">장소 ({places.length})</h2>
+          <h2 className="text-sm font-semibold text-muted-foreground">장소 ({visiblePlaces.length})</h2>
           <button
             type="button"
             onClick={() => setAdding(true)}
@@ -108,20 +117,20 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
           </p>
         )}
 
-        {places.length === 0 ? (
+        {visiblePlaces.length === 0 ? (
           <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-            아직 장소가 없어요. 가고 싶은 곳을 추가해보세요.
+            {activeDay ? "이 날 일정에 연결된 장소가 없어요. 위에서 '전체'를 누르면 모든 장소가 보여요." : "아직 장소가 없어요. 가고 싶은 곳을 추가해보세요."}
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border">
-            {places.map((p) => (
+            {visiblePlaces.map((p) => (
               <li key={p.id} className={p.id === selectedId ? "bg-primary/20" : undefined}>
                 <div className="flex items-start gap-3 px-3 py-3">
                   <span className="mt-1.5 h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(p.category) }} aria-hidden />
                   <button type="button" onClick={() => setSelectedId(p.id)} className="min-w-0 flex-1 text-left">
                     <span className={`block font-medium ${p.visited ? "text-muted-foreground line-through" : ""}`}>{p.name}</span>
                     <span className="block truncate text-xs text-muted-foreground">
-                      {[p.category, p.address].filter(Boolean).join(" · ") || "—"}
+                      {[p.category, dayTag(dayNumbers.get(p.id)), p.address].filter(Boolean).join(" · ") || "—"}
                       {p.lat === null && " · 좌표 없음"}
                     </span>
                   </button>
@@ -170,6 +179,9 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
     </div>
   );
 }
+
+/** [1, 3] → "Day 1·3" */
+const dayTag = (nums: number[] | undefined): string | null => (nums?.length ? `Day ${nums.join("·")}` : null);
 
 function DayChip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
   return (
