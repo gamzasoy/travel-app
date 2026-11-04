@@ -145,6 +145,25 @@ export function planPlaceDays(
   return plan;
 }
 
+/**
+ * 이미 있는 장소를 days 의 각 날짜 맨 뒤에 "한 번 더" 방문하는 일정 추가안 (예: 숙소 → 관광 → 숙소로 복귀).
+ * 그날 이미 이 장소가 있어도 건너뛰지 않고 새 일정을 만든다.
+ */
+export function planExtraVisits(
+  items: ScheduleItem[],
+  place: Pick<Place, "id" | "name" | "tripId">,
+  days: string[],
+): NewScheduleItem[] {
+  const sim: ScheduleItem[] = [...items];
+  const out: NewScheduleItem[] = [];
+  for (const d of [...new Set(days)].sort()) {
+    const item: NewScheduleItem = { tripId: place.tripId, title: place.name, start: d, placeId: place.id, note: "", order: nextOrder(sim, d) };
+    out.push(item);
+    sim.push({ ...item, id: `extra-${d}` });
+  }
+  return out;
+}
+
 /** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */
 export function dayNumbersByPlace(byDay: Map<string, Place[]>, days: string[]): Map<string, number[]> {
   const out = new Map<string, number[]>();
