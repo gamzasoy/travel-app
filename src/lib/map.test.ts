@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planPlaceDays, planReorderVisits, routeForDay } from "./map";
+import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planExtraVisits, planPlaceDays, planReorderVisits, routeForDay } from "./map";
 import type { Place, ScheduleItem } from "./types";
 
 const place = (id: string, lat: number | null, lng: number | null): Place => ({
@@ -212,5 +212,20 @@ describe("boundsOf / hasCoords / categoryColor", () => {
     expect(categoryColor("맛집")).toBe("#f97316");
     expect(categoryColor("쇼핑")).toBe("#14b8a6");
     expect(categoryColor(null)).toBe("#94a3b8");
+  });
+});
+
+describe("planExtraVisits", () => {
+  const pl = { id: "hotel", name: "숙소", tripId: "t" };
+
+  it("그날 이미 있는 장소도 맨 뒤에 한 번 더 넣는다", () => {
+    const items = [item("2026-12-01", "hotel", 0), item("2026-12-01", "x", 1)];
+    const plan = planExtraVisits(items, pl, ["2026-12-01"]);
+    expect(plan).toEqual([{ tripId: "t", title: "숙소", start: "2026-12-01", placeId: "hotel", note: "", order: 2 }]);
+  });
+
+  it("여러 날짜는 날짜별로 각각 만들고 중복 날짜는 한 번만", () => {
+    const plan = planExtraVisits([], pl, ["2026-12-02", "2026-12-01", "2026-12-02"]);
+    expect(plan.map((p) => [p.start, p.order])).toEqual([["2026-12-01", 0], ["2026-12-02", 0]]);
   });
 });

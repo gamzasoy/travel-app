@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import * as repo from "@/lib/notion/repo";
-import { planPlaceDays, planReorderVisits } from "@/lib/map";
+import { planExtraVisits, planPlaceDays, planReorderVisits } from "@/lib/map";
 import { PLACE_CATEGORIES } from "@/lib/types";
 import type { ActionResult } from "./expenses";
 
@@ -43,12 +43,20 @@ export async function addPlace(input: PlaceInput, daysRaw: string[] = []): Promi
 
   const existing = await repo.listPlaces(tripId);
   const d = parsed.data;
-  // 같은 구글 장소를 두 번 저장하지 않는다
-  if (d.googlePlaceId && existing.some((p) => p.googlePlaceId === d.googlePlaceId)) {
-    return fail("이미 추가된 장소예요.");
-  }
   const days = daysInput.safeParse(daysRaw);
   if (!days.success) return fail("날짜가 올바르지 않아요.");
+  // 같은 구글 장소를 두 번 저장하지 않는다. 대신 날짜를 골랐다면 그 장소를 그날 일정 맨 뒤에 한 번 더 넣는다 (숙소 복귀 등)
+  const dup = d.googlePlaceId ? existing.find((p) => p.googlePlaceId === d.googlePlaceId) : undefined;
+  if (dup) {
+    if (days.data.length === 0) return fail("이미 추가된 장소예요. 일정에 또 넣으려면 방문 날짜를 골라주세요.");
+    try {
+      const items = await repo.listSchedule(tripId);
+      for (const item of planExtraVisits(items, dup, days.data)) await repo.createScheduleItem(item);
+    } catch {
+      return fail("날짜를 일정에 넣지 못했어요. 다시 시도해주세요.");
+    }
+    return { ok: true };
+  }
   const id = await repo.createPlace({ tripId, ...d, visited: false });
   if (days.data.length > 0) {
     try {
