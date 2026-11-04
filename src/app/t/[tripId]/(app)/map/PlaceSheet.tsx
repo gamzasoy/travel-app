@@ -37,11 +37,11 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">장소 추가</h2>
-          <button type="button" onClick={onClose} className="text-sm text-slate-500">
+          <button type="button" onClick={onClose} className="text-sm text-muted-foreground">
             닫기
           </button>
         </div>
@@ -63,7 +63,7 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
           onChange={(e) => setName(e.target.value)}
           placeholder="장소 이름"
           maxLength={100}
-          className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
         <input
           aria-label="주소"
@@ -71,11 +71,11 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
           onChange={(e) => setAddress(e.target.value)}
           placeholder="주소 (선택)"
           maxLength={300}
-          className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
         {coords && <p className="-mt-2 text-xs text-emerald-700">📍 지도 좌표가 확인됐어요.</p>}
         {!searchEnabled && (
-          <p className="-mt-2 text-xs text-slate-500">
+          <p className="-mt-2 text-xs text-muted-foreground">
             지도 키가 없어 좌표 없이 저장돼요. 길찾기는 이름·주소로 검색해요.
           </p>
         )}
@@ -87,7 +87,7 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
               type="button"
               aria-pressed={category === c}
               onClick={() => setCategory(category === c ? null : c)}
-              className={`rounded-full border px-3 py-1 text-sm ${category === c ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-300 text-slate-600"}`}
+              className={`rounded-full border px-3 py-1 text-sm ${category === c ? "border-primary bg-primary/20 text-foreground" : "border-border text-muted-foreground"}`}
             >
               {c}
             </button>
@@ -95,7 +95,7 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
         </div>
 
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
@@ -103,7 +103,7 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
         <button
           type="submit"
           disabled={pending || !name.trim()}
-          className="rounded-xl bg-sky-500 py-3 font-semibold text-white disabled:opacity-50"
+          className="rounded-xl bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
         >
           {pending ? "저장 중…" : "저장"}
         </button>

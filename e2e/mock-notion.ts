@@ -17,6 +17,20 @@ const text = (s: string) => [{ plain_text: s }];
 const rel = (...ids: string[]) => ({ relation: ids.map((id) => ({ id })) });
 
 const store: Record<string, Page[]> = {
+  get "ds-trips"(): Page[] {
+    return [
+      trip,
+      {
+        object: "page" as const,
+        id: "trip-bbbbbbbbbbbbbbbb",
+        properties: {
+          [P.title]: { title: text("오사카 여행") },
+          [P.startEnd]: { date: { start: "2027-03-10", end: "2027-03-13" } },
+          [P.pin]: { rich_text: text("5678") },
+        },
+      },
+    ];
+  },
   "ds-members": MEMBERS.map((m) => ({
     object: "page",
     id: m.id,

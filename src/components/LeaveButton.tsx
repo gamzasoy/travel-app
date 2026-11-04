@@ -9,7 +9,7 @@ export function LeaveButton({ tripId, label }: { tripId: string; label: string }
       action={leaveTrip.bind(null, tripId)}
       onSubmit={() => navigator.serviceWorker?.controller?.postMessage("clear-pages")}
     >
-      <button type="submit" className="text-sm text-slate-500 underline">
+      <button type="submit" className="text-sm text-muted-foreground underline">
         {label}
       </button>
     </form>

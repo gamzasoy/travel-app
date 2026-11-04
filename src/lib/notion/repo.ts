@@ -88,6 +88,30 @@ export function getTrip(tripId: string): Promise<Trip | null> {
   )();
 }
 
+/** 전체 여행 목록 (최신 시작일 순). PIN 은 목록에서 쓰지 않으므로 호출부에서 넘기지 말 것. */
+export function listTrips(): Promise<Trip[]> {
+  return unstable_cache(
+    async () => {
+      const pages: NotionPageLike[] = [];
+      let cursor: string | undefined;
+      do {
+        const res = await notion().dataSources.query({
+          data_source_id: dsId("trips"),
+          start_cursor: cursor,
+          page_size: 100,
+        });
+        for (const r of res.results as unknown[]) if (isFullPage(r)) pages.push(r);
+        cursor = res.has_more ? (res.next_cursor ?? undefined) : undefined;
+      } while (cursor);
+      return pages
+        .map(pageToTrip)
+        .sort((a, b) => (b.startDate ?? "").localeCompare(a.startDate ?? ""));
+    },
+    ["trips"],
+    { tags: ["trips"], revalidate: 300 },
+  )();
+}
+
 export const listMembers = cachedList<Member>("members", "members", pageToMember);
 export const listPlaces = cachedList<Place>("places", "places", pageToPlace);
 export const listExpenses = cachedList<Expense>("expenses", "expenses", pageToExpense);

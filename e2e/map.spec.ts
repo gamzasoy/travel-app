@@ -35,7 +35,7 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   // 일정 카드의 "지도에서 보기" → 지도 화면에서 그 장소가 선택(강조)돼 있다
   await page.getByRole("link", { name: "지도에서 보기" }).first().click();
   await expect(page).toHaveURL(/\/map\?p=/);
-  await expect(page.getByRole("listitem").filter({ hasText: "이치란 시부야점" })).toHaveClass(/bg-sky-50/);
+  await expect(page.getByRole("listitem").filter({ hasText: "이치란 시부야점" })).toHaveClass(/bg-primary\/20/);
 
   // 경로 안내: 좌표 없는 장소뿐이라 경로가 비어 있다는 안내
   await page.getByRole("button", { name: /Day 1/ }).click();

@@ -70,20 +70,20 @@ export function PlaceSearch({ onPick }: { onPick: (p: Picked) => void }) {
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="🔍 장소 검색 (예: 센소지, 이치란 라멘)"
-        className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+        className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
       />
       {suggestions.length > 0 && (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+        <ul className="divide-y divide-border rounded-xl border border-border">
           {suggestions.map((s, i) => (
             <li key={s.placePrediction?.placeId ?? i}>
-              <button type="button" onClick={() => pick(s)} className="w-full px-3 py-2 text-left text-sm active:bg-slate-50">
+              <button type="button" onClick={() => pick(s)} className="w-full px-3 py-2 text-left text-sm active:bg-muted">
                 {s.placePrediction?.text.text}
               </button>
             </li>
           ))}
         </ul>
       )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }

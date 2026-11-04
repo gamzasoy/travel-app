@@ -32,7 +32,7 @@ export function JoinForm({ tripId, tripName }: { tripId: string; tripName: strin
   return (
     <div className="flex min-h-dvh flex-col justify-center gap-6 p-6">
       <header className="text-center">
-        <p className="text-sm text-slate-500">초대받은 여행</p>
+        <p className="text-sm text-muted-foreground">초대받은 여행</p>
         <h1 className="mt-1 text-2xl font-bold">{tripName || "여행"}</h1>
       </header>
 
@@ -50,12 +50,12 @@ export function JoinForm({ tripId, tripName }: { tripId: string; tripName: strin
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="친구에게 받은 PIN"
-            className="rounded-xl border border-slate-300 px-4 py-3 text-lg tracking-widest outline-none focus:border-sky-500"
+            className="rounded-xl border border-border px-4 py-3 text-lg tracking-widest outline-none focus:border-primary"
           />
           <button
             type="submit"
             disabled={pending || !pin.trim()}
-            className="rounded-xl bg-sky-500 py-3 font-semibold text-white disabled:opacity-50"
+            className="rounded-xl bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
           >
             {pending ? "확인 중…" : "다음"}
           </button>
@@ -70,7 +70,7 @@ export function JoinForm({ tripId, tripName }: { tripId: string; tripName: strin
                   type="button"
                   disabled={pending}
                   onClick={() => pick(m.id)}
-                  className="w-full rounded-xl border border-slate-300 py-3 text-lg font-medium active:bg-sky-50 disabled:opacity-50"
+                  className="w-full rounded-xl border border-border py-3 text-lg font-medium active:bg-primary/20 disabled:opacity-50"
                 >
                   {m.name}
                 </button>
@@ -81,7 +81,7 @@ export function JoinForm({ tripId, tripName }: { tripId: string; tripName: strin
       )}
 
       {error && (
-        <p role="alert" className="text-center text-sm text-red-600">
+        <p role="alert" className="text-center text-sm text-destructive">
           {error}
         </p>
       )}

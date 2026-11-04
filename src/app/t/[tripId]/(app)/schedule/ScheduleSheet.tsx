@@ -47,11 +47,11 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">{item ? "일정 수정" : "일정 추가"}</h2>
-          <button type="button" onClick={onClose} className="text-sm text-slate-500">
+          <button type="button" onClick={onClose} className="text-sm text-muted-foreground">
             닫기
           </button>
         </div>
@@ -63,37 +63,37 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="무엇을 하나요? (예: 센소지 구경)"
           maxLength={100}
-          className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
 
         <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
             날짜
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-base text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-base text-foreground"
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
             시간 (선택)
             <input
               type="time"
               value={time}
               onChange={(e) => setTime(e.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-base text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-base text-foreground"
             />
           </label>
         </div>
 
         {places.length > 0 && (
-          <label className="flex flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-col gap-1 text-xs text-muted-foreground">
             장소 (선택)
             <select
               value={placeId}
               onChange={(e) => setPlaceId(e.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-base text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-base text-foreground"
             >
               <option value="">장소 없음</option>
               {places.map((p) => (
@@ -112,11 +112,11 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
           placeholder="메모 (예: 예약번호, 준비물)"
           rows={3}
           maxLength={1000}
-          className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
 
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
@@ -127,7 +127,7 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
               type="button"
               onClick={remove}
               disabled={pending}
-              className="rounded-xl border border-red-300 px-4 py-3 font-medium text-red-600 disabled:opacity-50"
+              className="rounded-xl border border-destructive px-4 py-3 font-medium text-destructive disabled:opacity-50"
             >
               삭제
             </button>
@@ -135,7 +135,7 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
           <button
             type="submit"
             disabled={pending || !title.trim() || !date}
-            className="flex-1 rounded-xl bg-sky-500 py-3 font-semibold text-white disabled:opacity-50"
+            className="flex-1 rounded-xl bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
           >
             {pending ? "저장 중…" : "저장"}
           </button>

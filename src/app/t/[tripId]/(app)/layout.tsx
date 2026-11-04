@@ -23,7 +23,7 @@ export default async function TripLayout({
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <h1 className="truncate font-bold">{trip.name}</h1>
         <LeaveButton tripId={tripId} label={`${me?.name ?? "나"} · 바꾸기`} />
       </header>

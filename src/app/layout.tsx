@@ -14,7 +14,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#0ea5e9",
+  themeColor: "#f4b8c4",
 };
 
 export default function RootLayout({
@@ -22,7 +22,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
-      <body className="mx-auto min-h-dvh max-w-md bg-white text-slate-900 antialiased">
+      <body className="mx-auto min-h-dvh max-w-md bg-background text-foreground antialiased">
         {children}
         <PwaClient />
       </body>
