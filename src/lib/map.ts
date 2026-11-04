@@ -1,5 +1,5 @@
-import { groupByDay, timeOf, toStart } from "./schedule";
-import type { Place, PlaceCategory, ScheduleItem } from "./types";
+import { dateOf, groupByDay, nextOrder, timeOf, toStart } from "./schedule";
+import type { NewScheduleItem, Place, PlaceCategory, ScheduleItem } from "./types";
 
 export const CATEGORY_COLOR: Record<PlaceCategory, string> = {
   숙소: "#8b5cf6",
@@ -93,6 +93,56 @@ export function planReorderVisits(
     if (item.id !== slot.id) updates.push({ id: item.id, start: toStart(day, timeOf(slot.start)), order: slot.order });
   });
   return updates;
+}
+
+export interface PlaceDayPlan {
+  create: NewScheduleItem[];
+  update: { id: string; item: NewScheduleItem }[];
+  remove: string[];
+}
+
+/**
+ * 장소의 방문 날짜를 wanted 로 맞추기 위한 일정 변경안.
+ * - 새로 생긴 날짜: 그날 맨 뒤에 일정(제목=장소 이름)을 만든다
+ * - 해제된 날짜의 일정이 있으면 새 날짜로 옮긴다 (제목·시간·메모 유지) → 날짜 "변경"
+ * - 옮기고도 남는 해제된 날짜의 일정은 삭제한다
+ * 날짜 없는 일정과 다른 장소의 일정은 건드리지 않는다.
+ */
+export function planPlaceDays(
+  items: ScheduleItem[],
+  place: Pick<Place, "id" | "name" | "tripId">,
+  wanted: string[],
+): PlaceDayPlan {
+  const want = [...new Set(wanted)].sort();
+  const wantSet = new Set(want);
+  const linked = items.filter((i) => i.placeId === place.id && dateOf(i.start));
+  const have = new Set(linked.map((i) => dateOf(i.start) as string));
+  const spare = linked.filter((i) => !wantSet.has(dateOf(i.start) as string)); // 해제된 날짜의 일정
+  const sim: ScheduleItem[] = [...items]; // 순서값(order) 계산용
+  const plan: PlaceDayPlan = { create: [], update: [], remove: [] };
+
+  for (const d of want.filter((x) => !have.has(x))) {
+    const order = nextOrder(sim, d);
+    const moved = spare.shift();
+    if (moved) {
+      const item: NewScheduleItem = {
+        tripId: moved.tripId,
+        title: moved.title,
+        start: toStart(d, timeOf(moved.start)),
+        placeId: place.id,
+        note: moved.note,
+        order,
+      };
+      plan.update.push({ id: moved.id, item });
+      sim.push({ ...item, id: moved.id });
+    } else {
+      const item: NewScheduleItem = { tripId: place.tripId, title: place.name, start: d, placeId: place.id, note: "", order };
+      plan.create.push(item);
+      sim.push({ ...item, id: `new-${d}` });
+    }
+  }
+  plan.remove = spare.map((i) => i.id);
+  return plan;
 }
 
 /** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */

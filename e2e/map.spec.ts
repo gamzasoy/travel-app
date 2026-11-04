@@ -3,6 +3,7 @@ import { join } from "./helpers";
 
 // 이 e2e 는 구글 키 없이 실행된다 → 지도 대신 안내가 보이고, 장소는 직접 입력으로 추가한다.
 test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도에서 보기 → 다녀옴/삭제", async ({ page }) => {
+  test.setTimeout(90_000); // 개발 서버가 처음 쓰는 화면·액션을 컴파일하느라 오래 걸릴 수 있다
   await join(page, "민수");
   await page.getByRole("link", { name: "지도" }).click();
 
@@ -82,15 +83,62 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   await page.mouse.down();
   await page.mouse.move(second.x + 24, second.y + second.height / 2 - 20, { steps: 4 });
   await page.mouse.move(second.x + 24, first.y + 8, { steps: 8 });
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/map"));
   await page.mouse.up();
   await expect(places.nth(0)).toContainText("1. 이치란 시부야점");
   await expect(places.nth(1)).toContainText("2. 센소지");
-  // 새로고침해도 유지된다 (일정의 시간이 서로 바뀌어 저장됨)
+  // 저장이 끝난 뒤 새로고침해도 유지된다 (일정의 시간이 서로 바뀌어 저장됨)
+  await saved;
   await page.reload();
   await dayChips.getByRole("button", { name: /Day 1/ }).click();
   await expect(places.nth(0)).toContainText("1. 이치란 시부야점");
   await expect(places.nth(1)).toContainText("2. 센소지");
   await dayChips.getByRole("button", { name: "전체" }).click();
+  await expect(page.getByText("장소 (2)")).toBeVisible();
+
+  // 날짜를 고르고 장소를 추가하면 그날 일정에 자동으로 들어가고(맨 뒤), 장소를 눌러 날짜를 바꾸거나 해제할 수 있다
+  await dayChips.getByRole("button", { name: /Day 1/ }).click();
+  await page.getByRole("button", { name: "+ 장소 추가" }).click();
+  const visitDays = page.getByRole("group", { name: "방문 날짜" });
+  await expect(visitDays.getByRole("button", { name: /Day 1/ })).toHaveAttribute("aria-pressed", "true"); // 보던 날이 기본 선택
+  await page.getByLabel("장소 이름").fill("도톤보리");
+  await page.getByRole("button", { name: "저장" }).click();
+  await expect(places.nth(2)).toContainText("3. 도톤보리");
+
+  // 순서: 새로 넣은 장소를 맨 위로 끌어 올린다 (시간이 없는 일정은 순서만 바뀜)
+  const top = (await places.nth(0).boundingBox())!;
+  const third = (await places.nth(2).boundingBox())!;
+  await page.mouse.move(third.x + 24, third.y + third.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(third.x + 24, third.y + third.height / 2 - 20, { steps: 4 });
+  await page.mouse.move(third.x + 24, top.y + 8, { steps: 10 });
+  const savedOrder = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/map"));
+  await page.mouse.up();
+  await expect(places.nth(0)).toContainText("1. 도톤보리");
+  await savedOrder;
+  await page.reload();
+  await dayChips.getByRole("button", { name: /Day 1/ }).click();
+  await expect(places.nth(0)).toContainText("1. 도톤보리"); // 새로고침해도 유지
+
+  // 날짜 편집: Day 1 → Day 2 로 옮기면 Day 1 목록에서 빠지고 Day 2 에 나온다
+  await page.getByRole("button", { name: "도톤보리 편집" }).click();
+  await expect(visitDays.getByRole("button", { name: /Day 1/ })).toHaveAttribute("aria-pressed", "true");
+  await visitDays.getByRole("button", { name: /Day 1/ }).click();
+  await visitDays.getByRole("button", { name: /Day 2/ }).click();
+  await page.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByRole("listitem").filter({ hasText: "도톤보리" })).toHaveCount(0);
+  await dayChips.getByRole("button", { name: /Day 2/ }).click();
+  await expect(places.nth(0)).toContainText("1. 도톤보리");
+
+  // 날짜를 모두 해제하면 일정에서 빠지고(일정이 삭제됨), 장소는 전체에 남는다
+  await page.getByRole("button", { name: "도톤보리 편집" }).click();
+  await visitDays.getByRole("button", { name: /Day 2/ }).click();
+  await page.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByText("이 날 일정에 연결된 장소가 없어요. 일정에서")).toBeVisible();
+  await dayChips.getByRole("button", { name: "전체" }).click();
+  await expect(page.getByText("장소 (3)")).toBeVisible();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "도톤보리 삭제" }).click();
   await expect(page.getByText("장소 (2)")).toBeVisible();
 
   // 다녀옴 체크 → 취소선
