@@ -37,9 +37,17 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   await expect(page).toHaveURL(/\/map\?p=/);
   await expect(page.getByRole("listitem").filter({ hasText: "이치란 시부야점" })).toHaveClass(/bg-primary\/20/);
 
-  // 경로 안내: 좌표 없는 장소뿐이라 경로가 비어 있다는 안내
-  await page.getByRole("button", { name: /Day 1/ }).click();
+  // 일정에 연결된 장소엔 Day 표시가 붙고, 날짜를 고르면 그날 장소만 보인다 (좌표 없는 장소뿐이라 경로는 비어 있다는 안내)
+  await expect(row.getByText(/Day 1/)).toBeVisible();
+  const dayChips = page.getByRole("group", { name: "날짜" });
+  await dayChips.getByRole("button", { name: /Day 1/ }).click();
   await expect(page.getByText("이 날 일정에 좌표가 있는 장소가 없어요.")).toBeVisible();
+  await expect(page.getByText("장소 (1)")).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "센소지" })).toHaveCount(0);
+  await dayChips.getByRole("button", { name: /Day 2/ }).click();
+  await expect(page.getByText("이 날 일정에 연결된 장소가 없어요. 일정에서")).toBeVisible();
+  await dayChips.getByRole("button", { name: "전체" }).click();
+  await expect(page.getByText("장소 (2)")).toBeVisible();
 
   // 다녀옴 체크 → 취소선
   await row.getByLabel("다녀옴").check();

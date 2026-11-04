@@ -36,6 +36,34 @@ export function routeForDay(items: ScheduleItem[], places: Place[], day: string 
   return stops;
 }
 
+/** 날짜 → 그날 일정에 연결된 장소 (일정 순서, 같은 장소 중복 제거). 장소 없는 일정·삭제된 장소는 제외 */
+export function placesByDay(items: ScheduleItem[], places: Place[]): Map<string, Place[]> {
+  const byId = new Map(places.map((p) => [p.id, p]));
+  const out = new Map<string, Place[]>();
+  for (const [day, list] of groupByDay(items)) {
+    const seen = new Set<string>();
+    const ps: Place[] = [];
+    for (const it of list) {
+      const place = it.placeId ? byId.get(it.placeId) : undefined;
+      if (place && !seen.has(place.id)) {
+        seen.add(place.id);
+        ps.push(place);
+      }
+    }
+    if (ps.length > 0) out.set(day, ps);
+  }
+  return out;
+}
+
+/** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */
+export function dayNumbersByPlace(byDay: Map<string, Place[]>, days: string[]): Map<string, number[]> {
+  const out = new Map<string, number[]>();
+  days.forEach((d, i) => {
+    for (const p of byDay.get(d) ?? []) out.set(p.id, [...(out.get(p.id) ?? []), i + 1]);
+  });
+  return out;
+}
+
 export interface Bounds {
   north: number;
   south: number;
