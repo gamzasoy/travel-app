@@ -1,4 +1,4 @@
-import { groupByDay } from "./schedule";
+import { groupByDay, timeOf, toStart } from "./schedule";
 import type { Place, PlaceCategory, ScheduleItem } from "./types";
 
 export const CATEGORY_COLOR: Record<PlaceCategory, string> = {
@@ -53,6 +53,47 @@ export function placesByDay(items: ScheduleItem[], places: Place[]): Map<string,
     if (ps.length > 0) out.set(day, ps);
   }
   return out;
+}
+
+export interface VisitUpdate {
+  id: string;
+  start: string;
+  order: number;
+}
+
+/**
+ * 그날 방문 순서에서 장소를 한 칸 위(-1)/아래(1)로 옮기기 위한 일정 변경안.
+ * 장소별 첫 일정 두 개의 (시간, 순서)를 서로 맞바꾼다 — 일정은 시간 → 순서 순으로 정렬되므로
+ * 시간이 있는 일정은 시간이 서로 바뀌고, 시간이 없는 일정은 순서만 바뀐다.
+ * 이미 맨 위/아래이거나 그날 방문 목록에 없으면 null.
+ */
+export function planMoveVisit(
+  items: ScheduleItem[],
+  places: Place[],
+  day: string,
+  placeId: string,
+  dir: -1 | 1,
+): VisitUpdate[] | null {
+  const known = new Set(places.map((p) => p.id));
+  const seen = new Set<string>();
+  const firsts: ScheduleItem[] = [];
+  for (const it of groupByDay(items).get(day) ?? []) {
+    if (it.placeId && known.has(it.placeId) && !seen.has(it.placeId)) {
+      seen.add(it.placeId);
+      firsts.push(it);
+    }
+  }
+  const i = firsts.findIndex((it) => it.placeId === placeId);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= firsts.length) return null;
+  const a = firsts[i];
+  const b = firsts[j];
+  const take = (to: ScheduleItem, from: ScheduleItem): VisitUpdate => ({
+    id: to.id,
+    start: toStart(day, timeOf(from.start)),
+    order: from.order,
+  });
+  return [take(a, b), take(b, a)];
 }
 
 /** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */

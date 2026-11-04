@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, routeForDay } from "./map";
+import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planMoveVisit, routeForDay } from "./map";
 import type { Place, ScheduleItem } from "./types";
 
 const place = (id: string, lat: number | null, lng: number | null): Place => ({
@@ -77,6 +77,59 @@ describe("placesByDay / dayNumbersByPlace", () => {
     expect(nums.get("b")).toEqual([1]);
     expect(nums.get("noc")).toEqual([3]);
     expect(nums.has("x")).toBe(false); // 어느 일정에도 없는 장소
+  });
+});
+
+describe("planMoveVisit", () => {
+  const places = [place("a", 1, 1), place("b", 2, 2), place("c", 3, 3)];
+  const D = "2026-12-01";
+
+  it("시간 있는 일정은 시간을 맞바꾼다", () => {
+    const ia = item(`${D}T09:00:00`, "a", 0);
+    const ib = item(`${D}T12:00:00`, "b", 1);
+    const r = planMoveVisit([ia, ib], places, D, "b", -1)!;
+    expect(r).toEqual([
+      { id: ib.id, start: `${D}T09:00:00`, order: 0 },
+      { id: ia.id, start: `${D}T12:00:00`, order: 1 },
+    ]);
+  });
+
+  it("시간 없는 일정은 순서만 맞바꾼다", () => {
+    const ia = item(D, "a", 0);
+    const ib = item(D, "b", 1);
+    const r = planMoveVisit([ia, ib], places, D, "a", 1)!;
+    expect(r).toEqual([
+      { id: ia.id, start: D, order: 1 },
+      { id: ib.id, start: D, order: 0 },
+    ]);
+  });
+
+  it("시간 있는 일정과 없는 일정도 위치가 바뀐다", () => {
+    const ia = item(`${D}T09:00:00`, "a", 0); // a 가 먼저 (시간 있음)
+    const ib = item(D, "b", 1); // b 는 시간 없음 → 뒤
+    const r = planMoveVisit([ia, ib], places, D, "b", -1)!;
+    expect(r).toEqual([
+      { id: ib.id, start: `${D}T09:00:00`, order: 0 },
+      { id: ia.id, start: D, order: 1 },
+    ]);
+  });
+
+  it("같은 장소를 여러 번 가면 첫 일정 기준으로 옮기고, 장소 없는 일정은 건너뛴다", () => {
+    const a1 = item(`${D}T09:00:00`, "a", 0);
+    const x = item(`${D}T10:00:00`, null, 1);
+    const b = item(`${D}T12:00:00`, "b", 2);
+    const a2 = item(`${D}T18:00:00`, "a", 3);
+    const r = planMoveVisit([a1, x, b, a2], places, D, "b", -1)!;
+    expect(r.map((u) => u.id).sort()).toEqual([a1.id, b.id].sort());
+  });
+
+  it("맨 위에서 위로, 맨 아래에서 아래로, 없는 장소는 null", () => {
+    const ia = item(D, "a", 0);
+    const ib = item(D, "b", 1);
+    expect(planMoveVisit([ia, ib], places, D, "a", -1)).toBeNull();
+    expect(planMoveVisit([ia, ib], places, D, "b", 1)).toBeNull();
+    expect(planMoveVisit([ia, ib], places, D, "c", -1)).toBeNull();
+    expect(planMoveVisit([ia, ib], places, "2026-12-02", "a", 1)).toBeNull();
   });
 });
 

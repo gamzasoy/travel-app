@@ -1,17 +1,22 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addPlace } from "@/actions/places";
-import { PLACE_CATEGORIES, type PlaceCategory } from "@/lib/types";
+import { addPlace, editPlace } from "@/actions/places";
+import { PLACE_CATEGORIES, type Place, type PlaceCategory } from "@/lib/types";
 import { PlaceSearch } from "./PlaceSearch";
 import { safe } from "@/lib/safe-action";
 
-/** searchEnabled: 구글 키가 있어 <APIProvider> 안에서 렌더링될 때만 true */
-export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean; onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
-  const [category, setCategory] = useState<PlaceCategory | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number; googlePlaceId: string } | null>(null);
+/**
+ * searchEnabled: 구글 키가 있어 <APIProvider> 안에서 렌더링될 때만 true
+ * place: 있으면 수정 모드 (없으면 새 장소 추가)
+ */
+export function PlaceSheet({ searchEnabled, onClose, place }: { searchEnabled: boolean; onClose: () => void; place?: Place }) {
+  const [name, setName] = useState(place?.name ?? "");
+  const [address, setAddress] = useState(place?.address ?? "");
+  const [category, setCategory] = useState<PlaceCategory | null>(place?.category ?? null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number; googlePlaceId: string } | null>(
+    place && place.lat !== null && place.lng !== null ? { lat: place.lat, lng: place.lng, googlePlaceId: place.googlePlaceId } : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -19,14 +24,15 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await safe(() => addPlace({
+      const input = {
         name,
         address,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
         googlePlaceId: coords?.googlePlaceId ?? "",
         category,
-      }));
+      };
+      const res = await safe(() => (place ? editPlace(place.id, input) : addPlace(input)));
       if (res.ok) onClose();
       else setError(res.error);
     });
@@ -40,7 +46,7 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
         className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">장소 추가</h2>
+          <h2 className="text-lg font-bold">{place ? "장소 수정" : "장소 추가"}</h2>
           <button type="button" onClick={onClose} className="text-sm text-muted-foreground">
             닫기
           </button>
@@ -74,6 +80,9 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
           className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
         {coords && <p className="-mt-2 text-xs text-emerald-700">📍 지도 좌표가 확인됐어요.</p>}
+        {place && coords && searchEnabled && (
+          <p className="-mt-2 text-xs text-muted-foreground">이름·주소만 고치면 지도 위치는 그대로예요. 위치를 바꾸려면 위에서 다시 검색하세요.</p>
+        )}
         {!searchEnabled && (
           <p className="-mt-2 text-xs text-muted-foreground">
             지도 키가 없어 좌표 없이 저장돼요. 길찾기는 이름·주소로 검색해요.

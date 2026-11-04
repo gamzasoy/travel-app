@@ -2,7 +2,7 @@
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
-import { removePlace, setPlaceVisited } from "@/actions/places";
+import { moveVisit, removePlace, setPlaceVisited } from "@/actions/places";
 import { categoryColor, dayNumbersByPlace, placesByDay, routeForDay } from "@/lib/map";
 import { dayLabel, directionsUrl } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
@@ -43,6 +43,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
   );
   const [selectedId, setSelectedId] = useState<string | null>(initialPlaceId);
   const [adding, setAdding] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -52,6 +53,8 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
   const dayNumbers = useMemo(() => dayNumbersByPlace(byDay, days), [byDay, days]);
   // 날짜를 고르면 그날 일정에 연결된 장소만 (일정 순서대로), 아니면 전체
   const visiblePlaces = activeDay ? (byDay.get(activeDay) ?? []) : places;
+
+  const editingPlace = editingId ? places.find((p) => p.id === editingId) : undefined;
 
   const run = (fn: () => Promise<{ ok: true } | { ok: false; error: string }>, optimistic?: () => void) => {
     setError(null);
@@ -123,18 +126,51 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
           </p>
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border">
-            {visiblePlaces.map((p) => (
+            {visiblePlaces.map((p, i) => (
               <li key={p.id} className={p.id === selectedId ? "bg-primary/20" : undefined}>
                 <div className="flex items-start gap-3 px-3 py-3">
                   <span className="mt-1.5 h-3 w-3 shrink-0 rounded-full" style={{ background: categoryColor(p.category) }} aria-hidden />
-                  <button type="button" onClick={() => setSelectedId(p.id)} className="min-w-0 flex-1 text-left">
-                    <span className={`block font-medium ${p.visited ? "text-muted-foreground line-through" : ""}`}>{p.name}</span>
+                  <button
+                    type="button"
+                    aria-label={`${p.name} 편집`}
+                    onClick={() => {
+                      setSelectedId(p.id);
+                      setEditingId(p.id);
+                    }}
+                    className="min-w-0 flex-1 text-left"
+                  >
+                    <span className={`block font-medium ${p.visited ? "text-muted-foreground line-through" : ""}`}>
+                      {activeDay && `${i + 1}. `}
+                      {p.name}
+                    </span>
                     <span className="block truncate text-xs text-muted-foreground">
                       {[p.category, dayTag(dayNumbers.get(p.id)), p.address].filter(Boolean).join(" · ") || "—"}
                       {p.lat === null && " · 좌표 없음"}
                     </span>
                   </button>
                   <div className="flex shrink-0 flex-col items-end gap-1 text-xs">
+                    {activeDay && visiblePlaces.length > 1 && (
+                      <div className="flex gap-1" role="group" aria-label={`${p.name} 순서`}>
+                        <button
+                          type="button"
+                          disabled={pending || i === 0}
+                          aria-label={`${p.name} 위로`}
+                          onClick={() => run(() => moveVisit(p.id, activeDay, "up"))}
+                          className="rounded-lg border border-border px-2 py-1 text-foreground active:bg-muted disabled:opacity-30"
+                        >
+                          ▲
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending || i === visiblePlaces.length - 1}
+                          aria-label={`${p.name} 아래로`}
+                          onClick={() => run(() => moveVisit(p.id, activeDay, "down"))}
+                          className="rounded-lg border border-border px-2 py-1 text-foreground active:bg-muted disabled:opacity-30"
+                        >
+                          ▼
+                        </button>
+                      </div>
+                    )}
                     <a
                       href={directionsUrl(p)}
                       target="_blank"
@@ -176,6 +212,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
       </section>
 
       {adding && <PlaceSheet searchEnabled={hasKey} onClose={() => setAdding(false)} />}
+      {editingPlace && <PlaceSheet key={editingPlace.id} place={editingPlace} searchEnabled={hasKey} onClose={() => setEditingId(null)} />}
     </div>
   );
 }

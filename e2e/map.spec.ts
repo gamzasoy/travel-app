@@ -24,6 +24,17 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   const href = new URL((await row.getByRole("link", { name: /길찾기/ }).getAttribute("href"))!);
   expect(href.searchParams.get("destination")).toBe("이치란 시부야점 Shibuya, Tokyo");
 
+  // 장소를 누르면 편집 화면이 열리고, 이름·주소·카테고리를 고칠 수 있다
+  await row.getByRole("button", { name: "이치란 시부야점 편집" }).click();
+  await expect(page.getByRole("heading", { name: "장소 수정" })).toBeVisible();
+  await expect(page.getByLabel("장소 이름")).toHaveValue("이치란 시부야점");
+  await page.getByLabel("주소").fill("Shibuya 2-chome, Tokyo");
+  await page.getByRole("button", { name: "쇼핑" }).click();
+  await page.getByRole("button", { name: "저장" }).click();
+  await expect(page.getByRole("heading", { name: "장소 수정" })).toHaveCount(0);
+  await expect(page.getByText("쇼핑 · Shibuya 2-chome, Tokyo · 좌표 없음")).toBeVisible();
+  await expect(page.getByText("장소 (2)")).toBeVisible(); // 새로 생기지 않고 같은 장소가 수정됨
+
   // 일정에서 방금 추가한 장소를 고를 수 있다
   await page.getByRole("link", { name: "일정" }).click();
   await page.getByRole("button", { name: "일정 추가" }).click();
@@ -49,6 +60,26 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   await dayChips.getByRole("button", { name: "전체" }).click();
   await expect(page.getByText("장소 (2)")).toBeVisible();
 
+  // 같은 날 두 장소를 방문 순서대로 보여주고, ▲▼ 로 순서를 바꾼다 (시간이 있는 일정은 시간이 서로 바뀜)
+  await page.getByRole("link", { name: "일정", exact: true }).click();
+  await page.getByRole("button", { name: "일정 추가" }).click();
+  await page.getByLabel("제목").fill("아침 센소지");
+  await page.getByLabel("시간 (선택)").fill("10:00");
+  await page.getByLabel("장소 (선택)").selectOption({ label: "센소지" });
+  await page.getByRole("button", { name: "저장" }).click();
+  await page.getByRole("link", { name: "지도", exact: true }).click();
+  await dayChips.getByRole("button", { name: /Day 1/ }).click();
+  await expect(page.getByText("장소 (2)")).toBeVisible();
+  const places = page.getByRole("listitem");
+  await expect(places.nth(0)).toContainText("1. 센소지");
+  await expect(places.nth(1)).toContainText("2. 이치란 시부야점");
+  await expect(places.nth(0).getByRole("button", { name: "센소지 위로" })).toBeDisabled();
+  await places.nth(1).getByRole("button", { name: "이치란 시부야점 위로" }).click();
+  await expect(places.nth(0)).toContainText("1. 이치란 시부야점");
+  await expect(places.nth(1)).toContainText("2. 센소지");
+  await dayChips.getByRole("button", { name: "전체" }).click();
+  await expect(page.getByText("장소 (2)")).toBeVisible();
+
   // 다녀옴 체크 → 취소선
   await row.getByLabel("다녀옴").check();
   await expect(row.getByText("이치란 시부야점")).toHaveClass(/line-through/);
@@ -64,4 +95,8 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "삭제" }).click();
   await expect(page.getByRole("button", { name: "저녁 라멘" })).toHaveCount(0);
+  await page.getByRole("button", { name: "아침 센소지" }).click();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "삭제" }).click();
+  await expect(page.getByRole("button", { name: "아침 센소지" })).toHaveCount(0);
 });
