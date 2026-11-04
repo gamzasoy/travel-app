@@ -115,19 +115,18 @@ function ScheduleCard({ tripId, item, place, index, onEdit }: { tripId: string; 
   const time = timeOf(item.start);
   return (
     <li className="flex gap-3 rounded-xl border border-border p-3">
-      {time ? (
-        <div className="w-12 shrink-0 pt-0.5 text-sm font-semibold text-foreground">{time}</div>
-      ) : (
-        <div
-          aria-hidden="true"
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
-        >
-          {index}
-        </div>
-      )}
+      <div
+        aria-hidden="true"
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+      >
+        {index}
+      </div>
       <div className="min-w-0 flex-1">
         <button type="button" onClick={onEdit} className="block w-full text-left">
-          <span className="block font-medium">{item.title}</span>
+          <span className="block font-medium">
+            {time && <span className="mr-1.5 text-sm font-semibold text-primary">{time}</span>}
+            {item.title}
+          </span>
           {place && place.name !== item.title && (
             <span className="block truncate text-xs text-muted-foreground">📍 {place.name}</span>
           )}
