@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { TRIP_ID } from "./ids";
+import { join } from "./helpers";
 
 test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
   await page.goto(`/t/${TRIP_ID}/expenses`);
@@ -16,7 +17,8 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
   await page.getByLabel("PIN").fill("1234");
   await page.getByRole("button", { name: "다음" }).click();
   await page.getByRole("button", { name: "민수" }).click();
-  await expect(page).toHaveURL(new RegExp(`/t/${TRIP_ID}/expenses$`));
+  await expect(page).toHaveURL(new RegExp(`/t/${TRIP_ID}/schedule$`));
+  await page.getByRole("link", { name: "가계부" }).click();
   await expect(page.getByText("아직 지출이 없어요")).toBeVisible();
 
   // 엔화 지출 추가: ¥3,000, 환율 100엔=900원 → 3,000×900/100 = ₩27,000
@@ -44,10 +46,8 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
 });
 
 test("지출 삭제", async ({ page }) => {
-  await page.goto(`/t/${TRIP_ID}/join`);
-  await page.getByLabel("PIN").fill("1234");
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "지은" }).click();
+  await join(page, "지은");
+  await page.getByRole("link", { name: "가계부" }).click();
   await page.getByText("라멘").click();
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "삭제" }).click();
@@ -55,10 +55,7 @@ test("지출 삭제", async ({ page }) => {
 });
 
 test("수동 환율을 바꾸면 이후 지출에 적용된다", async ({ page }) => {
-  await page.goto(`/t/${TRIP_ID}/join`);
-  await page.getByLabel("PIN").fill("1234");
-  await page.getByRole("button", { name: "다음" }).click();
-  await page.getByRole("button", { name: "현우" }).click();
+  await join(page, "현우");
   await page.getByRole("link", { name: "설정" }).click();
   await page.getByLabel(/직접 입력/).fill("1000");
   await page.getByRole("button", { name: "저장" }).click();

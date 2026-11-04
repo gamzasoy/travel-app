@@ -1,3 +1,4 @@
+import { TRIP_TIME_ZONE } from "../schedule";
 import { P } from "./schema";
 import type {
   Currency,
@@ -126,6 +127,9 @@ const text = (content: string) => ({ rich_text: content ? [{ text: { content } }
 const relation = (ids: string[]) => ({ relation: ids.map((id) => ({ id })) });
 const select = (name: string | null) => ({ select: name ? { name } : null });
 const date = (start: string | null) => ({ date: start ? { start } : null });
+/** 시간이 있으면 여행지 시간대를 함께 저장해 노션 화면에서도 현지 시각으로 보이게 한다 */
+const dateTime = (start: string | null) =>
+  start && start.includes("T") ? { date: { start, time_zone: TRIP_TIME_ZONE } } : date(start);
 
 export function expenseToProperties(e: NewExpense) {
   return {
@@ -159,7 +163,7 @@ export function scheduleItemToProperties(s: NewScheduleItem) {
   return {
     [P.title]: title(s.title),
     [P.trip]: relation([s.tripId]),
-    [P.when]: date(s.start),
+    [P.when]: dateTime(s.start),
     [P.place]: relation(s.placeId ? [s.placeId] : []),
     [P.note]: text(s.note),
     [P.order]: { number: s.order },

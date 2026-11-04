@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const TABS = [
+  { href: "schedule", label: "일정", icon: "🗓️" },
   { href: "expenses", label: "가계부", icon: "💴" },
   { href: "settle", label: "정산", icon: "🤝" },
   { href: "settings", label: "설정", icon: "⚙️" },

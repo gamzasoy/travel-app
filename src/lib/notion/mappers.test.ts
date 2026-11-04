@@ -171,6 +171,14 @@ describe("쓰기 변환", () => {
     expect(props[P.placeCategory]).toEqual({ select: { name: "숙소" } });
   });
 
+  it("일정: 시간이 있으면 시간대를 함께, 날짜만이면 시간대 없이 저장", () => {
+    const base = { tripId: "t1", title: "x", placeId: null, note: "", order: 0 };
+    const withTime = scheduleItemToProperties({ ...base, start: "2026-12-01T18:00:00" }) as Props;
+    expect(withTime[P.when]).toEqual({ date: { start: "2026-12-01T18:00:00", time_zone: "Asia/Tokyo" } });
+    const dateOnly = scheduleItemToProperties({ ...base, start: "2026-12-01" }) as Props;
+    expect(dateOnly[P.when]).toEqual({ date: { start: "2026-12-01" } });
+  });
+
   it("일정: 날짜 없으면 date null", () => {
     const props = scheduleItemToProperties({
       tripId: "t1",

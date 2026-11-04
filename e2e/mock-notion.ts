@@ -23,7 +23,22 @@ const store: Record<string, Page[]> = {
     properties: { [P.title]: { title: text(m.name) }, [P.trip]: rel(TRIP_ID), [P.color]: { select: null } },
   })),
   "ds-expenses": [],
-  "ds-places": [],
+  "ds-places": [
+    {
+      object: "page",
+      id: "place-sensoji-000000001",
+      properties: {
+        [P.title]: { title: text("센소지") },
+        [P.trip]: rel(TRIP_ID),
+        [P.address]: { rich_text: text("Asakusa") },
+        [P.lat]: { number: 35.7148 },
+        [P.lng]: { number: 139.7967 },
+        [P.googlePlaceId]: { rich_text: text("ChIJ8T1GpMGOGGARDYGSgpooDWw") },
+        [P.placeCategory]: { select: { name: "관광" } },
+        [P.visited]: { checkbox: false },
+      },
+    },
+  ],
   "ds-schedule": [],
 };
 
