@@ -62,38 +62,37 @@ export interface VisitUpdate {
 }
 
 /**
- * 그날 방문 순서에서 장소를 한 칸 위(-1)/아래(1)로 옮기기 위한 일정 변경안.
- * 장소별 첫 일정 두 개의 (시간, 순서)를 서로 맞바꾼다 — 일정은 시간 → 순서 순으로 정렬되므로
- * 시간이 있는 일정은 시간이 서로 바뀌고, 시간이 없는 일정은 순서만 바뀐다.
- * 이미 맨 위/아래이거나 그날 방문 목록에 없으면 null.
+ * 그날 방문 순서를 orderedPlaceIds 순서로 바꾸기 위한 일정 변경안.
+ * 장소별 첫 일정이 가진 (시간, 순서) "자리"는 그대로 두고, 장소들이 새 순서대로 그 자리를 하나씩 차지한다.
+ * 일정은 시간 → 순서 순으로 정렬되므로, 시간이 있는 일정은 시간이 서로 옮겨 가고 시간이 없는 일정은 순서만 바뀐다.
+ * 바뀌는 일정만 돌려주고(변화 없으면 빈 배열), orderedPlaceIds 가 그날 방문 장소와 맞지 않으면 null.
  */
-export function planMoveVisit(
+export function planReorderVisits(
   items: ScheduleItem[],
   places: Place[],
   day: string,
-  placeId: string,
-  dir: -1 | 1,
+  orderedPlaceIds: string[],
 ): VisitUpdate[] | null {
   const known = new Set(places.map((p) => p.id));
   const seen = new Set<string>();
-  const firsts: ScheduleItem[] = [];
+  const slots: ScheduleItem[] = []; // 현재 방문 순서대로, 장소별 첫 일정
   for (const it of groupByDay(items).get(day) ?? []) {
     if (it.placeId && known.has(it.placeId) && !seen.has(it.placeId)) {
       seen.add(it.placeId);
-      firsts.push(it);
+      slots.push(it);
     }
   }
-  const i = firsts.findIndex((it) => it.placeId === placeId);
-  const j = i + dir;
-  if (i < 0 || j < 0 || j >= firsts.length) return null;
-  const a = firsts[i];
-  const b = firsts[j];
-  const take = (to: ScheduleItem, from: ScheduleItem): VisitUpdate => ({
-    id: to.id,
-    start: toStart(day, timeOf(from.start)),
-    order: from.order,
+  if (orderedPlaceIds.length !== slots.length || new Set(orderedPlaceIds).size !== slots.length) return null;
+  if (!orderedPlaceIds.every((id) => seen.has(id))) return null;
+
+  const byPlace = new Map(slots.map((it) => [it.placeId as string, it]));
+  const updates: VisitUpdate[] = [];
+  orderedPlaceIds.forEach((placeId, k) => {
+    const item = byPlace.get(placeId) as ScheduleItem;
+    const slot = slots[k];
+    if (item.id !== slot.id) updates.push({ id: item.id, start: toStart(day, timeOf(slot.start)), order: slot.order });
   });
-  return [take(a, b), take(b, a)];
+  return updates;
 }
 
 /** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */

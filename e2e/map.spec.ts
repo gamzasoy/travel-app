@@ -73,8 +73,21 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   const places = page.getByRole("listitem");
   await expect(places.nth(0)).toContainText("1. 센소지");
   await expect(places.nth(1)).toContainText("2. 이치란 시부야점");
-  await expect(places.nth(0).getByRole("button", { name: "센소지 위로" })).toBeDisabled();
-  await places.nth(1).getByRole("button", { name: "이치란 시부야점 위로" }).click();
+  await expect(page.getByText("장소를 꾹 눌러 끌면 방문 순서가 바뀌어요")).toBeVisible();
+
+  // 두 번째 장소를 끌어서 맨 위로 옮기면 순서가 바뀐다
+  const first = (await places.nth(0).boundingBox())!;
+  const second = (await places.nth(1).boundingBox())!;
+  await page.mouse.move(second.x + 24, second.y + second.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(second.x + 24, second.y + second.height / 2 - 20, { steps: 4 });
+  await page.mouse.move(second.x + 24, first.y + 8, { steps: 8 });
+  await page.mouse.up();
+  await expect(places.nth(0)).toContainText("1. 이치란 시부야점");
+  await expect(places.nth(1)).toContainText("2. 센소지");
+  // 새로고침해도 유지된다 (일정의 시간이 서로 바뀌어 저장됨)
+  await page.reload();
+  await dayChips.getByRole("button", { name: /Day 1/ }).click();
   await expect(places.nth(0)).toContainText("1. 이치란 시부야점");
   await expect(places.nth(1)).toContainText("2. 센소지");
   await dayChips.getByRole("button", { name: "전체" }).click();

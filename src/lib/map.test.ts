@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planMoveVisit, routeForDay } from "./map";
+import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planReorderVisits, routeForDay } from "./map";
 import type { Place, ScheduleItem } from "./types";
 
 const place = (id: string, lat: number | null, lng: number | null): Place => ({
@@ -80,56 +80,61 @@ describe("placesByDay / dayNumbersByPlace", () => {
   });
 });
 
-describe("planMoveVisit", () => {
+describe("planReorderVisits", () => {
   const places = [place("a", 1, 1), place("b", 2, 2), place("c", 3, 3)];
   const D = "2026-12-01";
+  const byId = (u: { id: string }[]) => Object.fromEntries(u.map((x) => [x.id, x]));
 
-  it("시간 있는 일정은 시간을 맞바꾼다", () => {
+  it("시간 있는 일정은 새 순서대로 시간 자리를 하나씩 옮겨 받는다 (맨 뒤를 맨 앞으로)", () => {
     const ia = item(`${D}T09:00:00`, "a", 0);
     const ib = item(`${D}T12:00:00`, "b", 1);
-    const r = planMoveVisit([ia, ib], places, D, "b", -1)!;
-    expect(r).toEqual([
-      { id: ib.id, start: `${D}T09:00:00`, order: 0 },
-      { id: ia.id, start: `${D}T12:00:00`, order: 1 },
-    ]);
+    const ic = item(`${D}T19:00:00`, "c", 2);
+    const r = byId(planReorderVisits([ia, ib, ic], places, D, ["c", "a", "b"])!);
+    expect(r[ic.id]).toEqual({ id: ic.id, start: `${D}T09:00:00`, order: 0 });
+    expect(r[ia.id]).toEqual({ id: ia.id, start: `${D}T12:00:00`, order: 1 });
+    expect(r[ib.id]).toEqual({ id: ib.id, start: `${D}T19:00:00`, order: 2 });
   });
 
-  it("시간 없는 일정은 순서만 맞바꾼다", () => {
+  it("시간 없는 일정은 순서만 바뀐다", () => {
     const ia = item(D, "a", 0);
     const ib = item(D, "b", 1);
-    const r = planMoveVisit([ia, ib], places, D, "a", 1)!;
-    expect(r).toEqual([
-      { id: ia.id, start: D, order: 1 },
-      { id: ib.id, start: D, order: 0 },
-    ]);
+    const r = byId(planReorderVisits([ia, ib], places, D, ["b", "a"])!);
+    expect(r[ia.id]).toEqual({ id: ia.id, start: D, order: 1 });
+    expect(r[ib.id]).toEqual({ id: ib.id, start: D, order: 0 });
   });
 
   it("시간 있는 일정과 없는 일정도 위치가 바뀐다", () => {
     const ia = item(`${D}T09:00:00`, "a", 0); // a 가 먼저 (시간 있음)
     const ib = item(D, "b", 1); // b 는 시간 없음 → 뒤
-    const r = planMoveVisit([ia, ib], places, D, "b", -1)!;
-    expect(r).toEqual([
-      { id: ib.id, start: `${D}T09:00:00`, order: 0 },
-      { id: ia.id, start: D, order: 1 },
-    ]);
+    const r = byId(planReorderVisits([ia, ib], places, D, ["b", "a"])!);
+    expect(r[ib.id]).toEqual({ id: ib.id, start: `${D}T09:00:00`, order: 0 });
+    expect(r[ia.id]).toEqual({ id: ia.id, start: D, order: 1 });
   });
 
-  it("같은 장소를 여러 번 가면 첫 일정 기준으로 옮기고, 장소 없는 일정은 건너뛴다", () => {
+  it("자리가 그대로인 일정은 건드리지 않고, 변화가 없으면 빈 배열", () => {
+    const ia = item(`${D}T09:00:00`, "a", 0);
+    const ib = item(`${D}T12:00:00`, "b", 1);
+    const ic = item(`${D}T19:00:00`, "c", 2);
+    expect(planReorderVisits([ia, ib, ic], places, D, ["a", "c", "b"])!.map((u) => u.id).sort()).toEqual([ib.id, ic.id].sort());
+    expect(planReorderVisits([ia, ib, ic], places, D, ["a", "b", "c"])).toEqual([]);
+  });
+
+  it("같은 장소를 여러 번 가면 첫 일정만 옮기고, 장소 없는 일정은 건너뛴다", () => {
     const a1 = item(`${D}T09:00:00`, "a", 0);
     const x = item(`${D}T10:00:00`, null, 1);
     const b = item(`${D}T12:00:00`, "b", 2);
     const a2 = item(`${D}T18:00:00`, "a", 3);
-    const r = planMoveVisit([a1, x, b, a2], places, D, "b", -1)!;
+    const r = planReorderVisits([a1, x, b, a2], places, D, ["b", "a"])!;
     expect(r.map((u) => u.id).sort()).toEqual([a1.id, b.id].sort());
   });
 
-  it("맨 위에서 위로, 맨 아래에서 아래로, 없는 장소는 null", () => {
+  it("그날 방문 장소와 맞지 않는 목록(빠짐·중복·모르는 장소·다른 날)은 null", () => {
     const ia = item(D, "a", 0);
     const ib = item(D, "b", 1);
-    expect(planMoveVisit([ia, ib], places, D, "a", -1)).toBeNull();
-    expect(planMoveVisit([ia, ib], places, D, "b", 1)).toBeNull();
-    expect(planMoveVisit([ia, ib], places, D, "c", -1)).toBeNull();
-    expect(planMoveVisit([ia, ib], places, "2026-12-02", "a", 1)).toBeNull();
+    expect(planReorderVisits([ia, ib], places, D, ["a"])).toBeNull();
+    expect(planReorderVisits([ia, ib], places, D, ["a", "a"])).toBeNull();
+    expect(planReorderVisits([ia, ib], places, D, ["a", "c"])).toBeNull();
+    expect(planReorderVisits([ia, ib], places, "2026-12-02", ["a", "b"])).toBeNull();
   });
 });
 
