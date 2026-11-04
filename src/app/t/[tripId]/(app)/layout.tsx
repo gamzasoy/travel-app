@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { leaveTrip } from "@/actions/session";
 import { getTrip, listMembers } from "@/lib/notion/repo";
+import { BottomTabs } from "@/components/BottomTabs";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
 /** middleware 가 1차로 막지만, 서버 컴포넌트에서도 세션을 다시 확인한다 */
@@ -30,7 +31,8 @@ export default async function TripLayout({
           </button>
         </form>
       </header>
-      <main className="flex-1 p-4">{children}</main>
+      <main className="flex-1 p-4 pb-24">{children}</main>
+      <BottomTabs tripId={tripId} />
     </div>
   );
 }

@@ -11,7 +11,8 @@ function requireEnv(name: string): string {
 }
 
 export function notion(): Client {
-  if (!client) client = new Client({ auth: requireEnv("NOTION_TOKEN") });
+  // NOTION_BASE_URL 은 테스트용 가짜 서버를 가리킬 때만 사용 (e2e/mock-notion.ts)
+  if (!client) client = new Client({ auth: requireEnv("NOTION_TOKEN"), baseUrl: process.env.NOTION_BASE_URL });
   return client;
 }
 
