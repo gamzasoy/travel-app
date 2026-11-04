@@ -70,8 +70,8 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
             </p>
           ) : (
             <ol className="flex flex-col gap-2">
-              {list.map((it) => (
-                <ScheduleCard key={it.id} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
+              {list.map((it, i) => (
+                <ScheduleCard key={it.id} index={i + 1} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
               ))}
             </ol>
           )}
@@ -82,8 +82,8 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
         <section>
           <h2 className="mb-1 text-xs font-semibold text-muted-foreground">날짜 미정</h2>
           <ol className="flex flex-col gap-2">
-            {undated.map((it) => (
-              <ScheduleCard key={it.id} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
+            {undated.map((it, i) => (
+              <ScheduleCard key={it.id} index={i + 1} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
             ))}
           </ol>
         </section>
@@ -111,11 +111,20 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
   );
 }
 
-function ScheduleCard({ tripId, item, place, onEdit }: { tripId: string; item: ScheduleItem; place?: Place; onEdit: () => void }) {
+function ScheduleCard({ tripId, item, place, index, onEdit }: { tripId: string; index: number; item: ScheduleItem; place?: Place; onEdit: () => void }) {
   const time = timeOf(item.start);
   return (
     <li className="flex gap-3 rounded-xl border border-border p-3">
-      {time && <div className="w-12 shrink-0 pt-0.5 text-sm font-semibold text-foreground">{time}</div>}
+      {time ? (
+        <div className="w-12 shrink-0 pt-0.5 text-sm font-semibold text-foreground">{time}</div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+        >
+          {index}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <button type="button" onClick={onEdit} className="block w-full text-left">
           <span className="block font-medium">{item.title}</span>
@@ -125,7 +134,7 @@ function ScheduleCard({ tripId, item, place, onEdit }: { tripId: string; item: S
           {item.note && <span className="mt-1 block whitespace-pre-line text-xs text-muted-foreground">{item.note}</span>}
         </button>
         {place && (
-          <div className="mt-2 flex gap-2">
+          <div className="mt-1.5 flex gap-2">
             <Link
               href={`/t/${tripId}/map?p=${place.id}`}
               className="rounded-lg border border-border px-2 py-1 text-xs text-foreground active:bg-muted"
