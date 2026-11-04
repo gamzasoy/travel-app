@@ -40,11 +40,11 @@ export function ExpensesView({ tripId, meId, members, expenses, rate, rateSource
 
   return (
     <div className="flex flex-col gap-4">
-      <section className="rounded-2xl bg-sky-50 p-4">
-        <p className="text-xs text-slate-500">총 지출 (원화 환산)</p>
+      <section className="rounded-2xl bg-primary/20 p-4">
+        <p className="text-xs text-muted-foreground">총 지출 (원화 환산)</p>
         <p className="mt-1 text-2xl font-bold">{formatMoney(krwTotal, "KRW")}</p>
-        {jpyTotal > 0 && <p className="text-sm text-slate-600">그중 엔화 {formatMoney(jpyTotal, "JPY")}</p>}
-        <p className="mt-2 text-xs text-slate-500">
+        {jpyTotal > 0 && <p className="text-sm text-muted-foreground">그중 엔화 {formatMoney(jpyTotal, "JPY")}</p>}
+        <p className="mt-2 text-xs text-muted-foreground">
           {rate
             ? `100엔 = ${rate.toLocaleString("ko-KR")}원 (${rateSource === "manual" ? "직접 입력" : "자동"})`
             : "환율을 불러오지 못했어요"}
@@ -59,13 +59,13 @@ export function ExpensesView({ tripId, meId, members, expenses, rate, rateSource
       </section>
 
       {expenses.length === 0 && (
-        <p className="py-10 text-center text-sm text-slate-500">아직 지출이 없어요. 아래 + 버튼으로 추가해보세요.</p>
+        <p className="py-10 text-center text-sm text-muted-foreground">아직 지출이 없어요. 아래 + 버튼으로 추가해보세요.</p>
       )}
 
       {groups.map(([date, items]) => (
         <section key={date}>
-          <h2 className="mb-1 text-xs font-semibold text-slate-500">{date}</h2>
-          <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200">
+          <h2 className="mb-1 text-xs font-semibold text-muted-foreground">{date}</h2>
+          <ul className="divide-y divide-border rounded-xl border border-border">
             {items.map((e) => {
               const krw = e.currency === "JPY" ? convert(e.amount, "JPY", "KRW", e.rate, rate) : null;
               return (
@@ -73,11 +73,11 @@ export function ExpensesView({ tripId, meId, members, expenses, rate, rateSource
                   <button
                     type="button"
                     onClick={() => setEditing({ mode: "edit", expense: e })}
-                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left active:bg-slate-50"
+                    className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left active:bg-muted"
                   >
                     <span className="min-w-0">
                       <span className="block truncate font-medium">{e.title}</span>
-                      <span className="block truncate text-xs text-slate-500">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {e.payerId ? (names.get(e.payerId) ?? "알 수 없음") : "결제자 없음"} 결제
                         {e.category ? ` · ${e.category}` : ""}
                         {` · ${e.participantIds.length || members.length}명`}
@@ -85,7 +85,7 @@ export function ExpensesView({ tripId, meId, members, expenses, rate, rateSource
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block font-semibold">{formatMoney(e.amount, e.currency)}</span>
-                      {krw !== null && <span className="block text-xs text-slate-500">≈{formatMoney(krw, "KRW")}</span>}
+                      {krw !== null && <span className="block text-xs text-muted-foreground">≈{formatMoney(krw, "KRW")}</span>}
                     </span>
                   </button>
                 </li>
@@ -99,7 +99,7 @@ export function ExpensesView({ tripId, meId, members, expenses, rate, rateSource
         type="button"
         aria-label="지출 추가"
         onClick={() => setEditing({ mode: "new" })}
-        className="fixed bottom-20 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-sky-500 text-3xl text-white shadow-lg active:bg-sky-600"
+        className="fixed bottom-20 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl text-primary-foreground shadow-lg active:brightness-95"
       >
         +
       </button>

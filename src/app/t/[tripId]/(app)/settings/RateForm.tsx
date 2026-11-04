@@ -21,12 +21,12 @@ export function RateForm({ manualRate, liveRate }: { manualRate: number | null; 
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl bg-slate-50 p-3 text-sm">
+      <div className="rounded-xl bg-muted p-3 text-sm">
         <p>
           자동 환율:{" "}
           <b>{liveRate ? `100엔 = ${liveRate.toLocaleString("ko-KR")}원` : "불러오지 못했어요"}</b>
         </p>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 text-muted-foreground">
           현재 적용: {manualRate ? `직접 입력 (100엔 = ${manualRate.toLocaleString("ko-KR")}원)` : "자동 환율"}
         </p>
       </div>
@@ -38,7 +38,7 @@ export function RateForm({ manualRate, liveRate }: { manualRate: number | null; 
           value={text}
           onChange={(e) => setText(e.target.value.replace(/[^0-9.]/g, ""))}
           placeholder={liveRate ? String(liveRate) : "예: 905"}
-          className="rounded-xl border border-slate-300 px-4 py-3 text-lg outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 text-lg outline-none focus:border-primary"
         />
       </label>
 
@@ -48,7 +48,7 @@ export function RateForm({ manualRate, liveRate }: { manualRate: number | null; 
             type="button"
             disabled={pending}
             onClick={() => save(null)}
-            className="rounded-xl border border-slate-300 px-4 py-3 text-slate-700 disabled:opacity-50"
+            className="rounded-xl border border-border px-4 py-3 text-foreground disabled:opacity-50"
           >
             자동으로
           </button>
@@ -57,14 +57,14 @@ export function RateForm({ manualRate, liveRate }: { manualRate: number | null; 
           type="button"
           disabled={pending || !valid}
           onClick={() => save(parsed)}
-          className="flex-1 rounded-xl bg-sky-500 py-3 font-semibold text-white disabled:opacity-50"
+          className="flex-1 rounded-xl bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
         >
           {pending ? "저장 중…" : "저장"}
         </button>
       </div>
 
       {msg && (
-        <p role="status" className={`text-sm ${msg.ok ? "text-emerald-700" : "text-red-600"}`}>
+        <p role="status" className={`text-sm ${msg.ok ? "text-emerald-700" : "text-destructive"}`}>
           {msg.text}
         </p>
       )}

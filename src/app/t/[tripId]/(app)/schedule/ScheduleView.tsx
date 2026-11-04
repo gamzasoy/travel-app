@@ -44,7 +44,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
                   role="tab"
                   aria-selected={selected}
                   onClick={() => setDay(d)}
-                  className={`shrink-0 rounded-xl border px-3 py-2 text-center text-sm ${selected ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300 text-slate-600"}`}
+                  className={`shrink-0 rounded-xl border px-3 py-2 text-center text-sm ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
                 >
                   <span className="block text-[10px] opacity-80">{d === today ? "오늘" : `Day ${i + 1}`}</span>
                   <span className="block font-semibold">{dayLabel(d)}</span>
@@ -57,7 +57,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
       )}
 
       {days.length === 0 && undated.length === 0 && (
-        <p className="py-10 text-center text-sm text-slate-500">
+        <p className="py-10 text-center text-sm text-muted-foreground">
           여행 기간이 비어 있어요. 일정을 추가하면 날짜가 생겨요.
         </p>
       )}
@@ -65,7 +65,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
       {activeDay && (
         <section aria-label={`${dayLabel(activeDay)} 일정`}>
           {list.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
               이 날의 일정이 아직 없어요.
             </p>
           ) : (
@@ -80,7 +80,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
 
       {undated.length > 0 && (
         <section>
-          <h2 className="mb-1 text-xs font-semibold text-slate-500">날짜 미정</h2>
+          <h2 className="mb-1 text-xs font-semibold text-muted-foreground">날짜 미정</h2>
           <ol className="flex flex-col gap-2">
             {undated.map((it) => (
               <ScheduleCard key={it.id} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
@@ -93,7 +93,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
         type="button"
         aria-label="일정 추가"
         onClick={() => setEditing({ mode: "new" })}
-        className="fixed bottom-20 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-sky-500 text-3xl text-white shadow-lg active:bg-sky-600"
+        className="fixed bottom-20 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl text-primary-foreground shadow-lg active:brightness-95"
       >
         +
       </button>
@@ -114,19 +114,19 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
 function ScheduleCard({ tripId, item, place, onEdit }: { tripId: string; item: ScheduleItem; place?: Place; onEdit: () => void }) {
   const time = timeOf(item.start);
   return (
-    <li className="flex gap-3 rounded-xl border border-slate-200 p-3">
-      <div className="w-12 shrink-0 pt-0.5 text-sm font-semibold text-sky-600">{time ?? "—"}</div>
+    <li className="flex gap-3 rounded-xl border border-border p-3">
+      <div className="w-12 shrink-0 pt-0.5 text-sm font-semibold text-foreground">{time ?? "—"}</div>
       <div className="min-w-0 flex-1">
         <button type="button" onClick={onEdit} className="block w-full text-left">
           <span className="block font-medium">{item.title}</span>
-          {place && <span className="block truncate text-xs text-slate-500">📍 {place.name}</span>}
-          {item.note && <span className="mt-1 block whitespace-pre-line text-xs text-slate-500">{item.note}</span>}
+          {place && <span className="block truncate text-xs text-muted-foreground">📍 {place.name}</span>}
+          {item.note && <span className="mt-1 block whitespace-pre-line text-xs text-muted-foreground">{item.note}</span>}
         </button>
         {place && (
           <div className="mt-2 flex gap-2">
             <Link
               href={`/t/${tripId}/map?p=${place.id}`}
-              className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 active:bg-slate-50"
+              className="rounded-lg border border-border px-2 py-1 text-xs text-foreground active:bg-muted"
             >
               지도에서 보기
             </Link>
@@ -134,7 +134,7 @@ function ScheduleCard({ tripId, item, place, onEdit }: { tripId: string; item: S
               href={directionsUrl(place)}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 active:bg-slate-50"
+              className="rounded-lg border border-border px-2 py-1 text-xs text-foreground active:bg-muted"
             >
               구글맵 길찾기 ↗
             </a>

@@ -81,24 +81,24 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
       <form
         onSubmit={submit}
         onClick={(e) => e.stopPropagation()}
-        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
+        className="mx-auto flex max-h-[92dvh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-t-3xl bg-card p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))]"
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold">{expense ? "지출 수정" : "지출 추가"}</h2>
-          <button type="button" onClick={onClose} className="text-sm text-slate-500">
+          <button type="button" onClick={onClose} className="text-sm text-muted-foreground">
             닫기
           </button>
         </div>
 
         <div className="flex gap-2">
-          <div className="flex overflow-hidden rounded-xl border border-slate-300" role="group" aria-label="통화">
+          <div className="flex overflow-hidden rounded-xl border border-border" role="group" aria-label="통화">
             {(["JPY", "KRW"] as const).map((c) => (
               <button
                 key={c}
                 type="button"
                 aria-pressed={currency === c}
                 onClick={() => setCurrency(c)}
-                className={`px-4 py-3 text-lg font-semibold ${currency === c ? "bg-sky-500 text-white" : "bg-white text-slate-600"}`}
+                className={`px-4 py-3 text-lg font-semibold ${currency === c ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground"}`}
               >
                 {c === "JPY" ? "¥" : "₩"}
               </button>
@@ -111,10 +111,10 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
             value={amount ? amount.toLocaleString("ko-KR") : ""}
             onChange={(e) => setAmountText(e.target.value.replace(/[^0-9]/g, "").slice(0, 9))}
             placeholder="0"
-            className="min-w-0 flex-1 rounded-xl border border-slate-300 px-4 py-3 text-right text-xl font-semibold outline-none focus:border-sky-500"
+            className="min-w-0 flex-1 rounded-xl border border-border px-4 py-3 text-right text-xl font-semibold outline-none focus:border-primary"
           />
         </div>
-        <p className="-mt-2 text-right text-xs text-slate-500">
+        <p className="-mt-2 text-right text-xs text-muted-foreground">
           {amount > 0 &&
             (preview !== null ? `≈ ${formatMoney(preview, other)}` : "환율이 없어 환산할 수 없어요")}
         </p>
@@ -125,7 +125,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
           onChange={(e) => setTitle(e.target.value)}
           placeholder="무엇에 썼나요? (예: 라멘)"
           maxLength={100}
-          className="rounded-xl border border-slate-300 px-4 py-3 outline-none focus:border-sky-500"
+          className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
         />
 
         <div className="flex flex-wrap gap-2" role="group" aria-label="분류">
@@ -135,7 +135,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
               type="button"
               aria-pressed={category === c}
               onClick={() => setCategory(category === c ? null : c)}
-              className={`rounded-full border px-3 py-1 text-sm ${category === c ? "border-sky-500 bg-sky-50 text-sky-700" : "border-slate-300 text-slate-600"}`}
+              className={`rounded-full border px-3 py-1 text-sm ${category === c ? "border-primary bg-primary/20 text-foreground" : "border-border text-muted-foreground"}`}
             >
               {c}
             </button>
@@ -143,21 +143,21 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
         </div>
 
         <div className="flex gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
             날짜
             <input
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-base text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-base text-foreground"
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1 text-xs text-slate-500">
+          <label className="flex flex-1 flex-col gap-1 text-xs text-muted-foreground">
             결제한 사람
             <select
               value={payerId}
               onChange={(e) => setPayerId(e.target.value)}
-              className="rounded-xl border border-slate-300 px-3 py-2 text-base text-slate-900"
+              className="rounded-xl border border-border px-3 py-2 text-base text-foreground"
             >
               {members.map((m) => (
                 <option key={m.id} value={m.id}>
@@ -169,7 +169,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
         </div>
 
         <fieldset>
-          <legend className="mb-2 flex w-full items-center justify-between text-xs text-slate-500">
+          <legend className="mb-2 flex w-full items-center justify-between text-xs text-muted-foreground">
             <span>함께한 사람 ({participants.size}명)</span>
             <button
               type="button"
@@ -186,7 +186,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
                 type="button"
                 aria-pressed={participants.has(m.id)}
                 onClick={() => toggle(m.id)}
-                className={`rounded-full border px-3 py-1 text-sm ${participants.has(m.id) ? "border-sky-500 bg-sky-500 text-white" : "border-slate-300 text-slate-600"}`}
+                className={`rounded-full border px-3 py-1 text-sm ${participants.has(m.id) ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
               >
                 {m.name}
               </button>
@@ -195,7 +195,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
         </fieldset>
 
         {error && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
         )}
@@ -206,7 +206,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
               type="button"
               onClick={remove}
               disabled={pending}
-              className="rounded-xl border border-red-300 px-4 py-3 font-medium text-red-600 disabled:opacity-50"
+              className="rounded-xl border border-destructive px-4 py-3 font-medium text-destructive disabled:opacity-50"
             >
               삭제
             </button>
@@ -214,7 +214,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
           <button
             type="submit"
             disabled={pending || amount <= 0 || !title.trim() || participants.size === 0}
-            className="flex-1 rounded-xl bg-sky-500 py-3 font-semibold text-white disabled:opacity-50"
+            className="flex-1 rounded-xl bg-primary py-3 font-semibold text-primary-foreground disabled:opacity-50"
           >
             {pending ? "저장 중…" : "저장"}
           </button>

@@ -101,7 +101,7 @@ function RouteLine({ route }: { route: RouteStop[] }) {
   const path = useMemo(() => route.map((s) => ({ lat: s.place.lat, lng: s.place.lng })), [route]);
   useEffect(() => {
     if (!map || path.length < 2) return;
-    const line = new google.maps.Polyline({ path, strokeColor: "#0ea5e9", strokeOpacity: 0.9, strokeWeight: 4, map });
+    const line = new google.maps.Polyline({ path, strokeColor: "#f4b8c4", strokeOpacity: 0.9, strokeWeight: 4, map });
     return () => line.setMap(null);
   }, [map, path]);
   return null;

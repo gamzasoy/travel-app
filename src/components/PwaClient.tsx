@@ -24,7 +24,7 @@ export function PwaClient() {
   return (
     <div
       role="status"
-      className="fixed inset-x-0 top-0 z-30 mx-auto max-w-md bg-amber-500 px-4 py-2 text-center text-sm font-medium text-white"
+      className="fixed inset-x-0 top-0 z-30 mx-auto max-w-md bg-amber-500 px-4 py-2 text-center text-sm font-medium text-primary-foreground"
     >
       오프라인이에요 · 마지막으로 본 내용만 보여요. 저장은 연결된 뒤에 할 수 있어요.
     </div>
