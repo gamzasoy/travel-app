@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import * as repo from "@/lib/notion/repo";
+import { planReorderVisits } from "@/lib/map";
 import { PLACE_CATEGORIES } from "@/lib/types";
 import type { ActionResult } from "./expenses";
 
@@ -35,6 +36,42 @@ export async function addPlace(input: PlaceInput): Promise<ActionResult> {
     return fail("이미 추가된 장소예요.");
   }
   await repo.createPlace({ tripId, ...d, visited: false });
+  return { ok: true };
+}
+
+export async function editPlace(placeId: string, input: PlaceInput): Promise<ActionResult> {
+  const { tripId } = await requireSession();
+  const id = idSchema.safeParse(placeId);
+  const existing = await repo.listPlaces(tripId);
+  const current = id.success ? existing.find((p) => p.id === id.data) : undefined;
+  if (!current) return fail("장소를 찾을 수 없어요.");
+  const parsed = placeInput.safeParse(input);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않아요.");
+
+  const d = parsed.data;
+  if (d.googlePlaceId && existing.some((p) => p.id !== current.id && p.googlePlaceId === d.googlePlaceId)) {
+    return fail("이미 추가된 장소예요.");
+  }
+  await repo.updatePlace(current.id, { tripId, ...d, visited: current.visited });
+  return { ok: true };
+}
+
+/** 그날 방문 순서를 바꾼다. placeIds 는 그날 방문하는 장소 전체를 새 순서대로 (일정의 시간·순서 자리를 옮김) */
+export async function reorderVisits(day: string, placeIds: string[]): Promise<ActionResult> {
+  const { tripId } = await requireSession();
+  const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).safeParse(day);
+  const ids = z.array(idSchema).max(200).safeParse(placeIds);
+  if (!date.success || !ids.success) return fail("순서를 바꿀 수 없어요.");
+
+  const [items, places] = await Promise.all([repo.listSchedule(tripId), repo.listPlaces(tripId)]);
+  const plan = planReorderVisits(items, places, date.data, ids.data);
+  if (!plan) return fail("일정이 바뀌어서 순서를 적용하지 못했어요. 화면을 새로고침해 주세요.");
+
+  for (const u of plan) {
+    const item = items.find((i) => i.id === u.id);
+    if (!item) return fail("일정을 찾을 수 없어요.");
+    await repo.updateScheduleItem(item.id, { tripId, title: item.title, start: u.start, placeId: item.placeId, note: item.note, order: u.order });
+  }
   return { ok: true };
 }
 

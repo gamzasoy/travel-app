@@ -1,4 +1,4 @@
-import { groupByDay } from "./schedule";
+import { groupByDay, timeOf, toStart } from "./schedule";
 import type { Place, PlaceCategory, ScheduleItem } from "./types";
 
 export const CATEGORY_COLOR: Record<PlaceCategory, string> = {
@@ -53,6 +53,46 @@ export function placesByDay(items: ScheduleItem[], places: Place[]): Map<string,
     if (ps.length > 0) out.set(day, ps);
   }
   return out;
+}
+
+export interface VisitUpdate {
+  id: string;
+  start: string;
+  order: number;
+}
+
+/**
+ * 그날 방문 순서를 orderedPlaceIds 순서로 바꾸기 위한 일정 변경안.
+ * 장소별 첫 일정이 가진 (시간, 순서) "자리"는 그대로 두고, 장소들이 새 순서대로 그 자리를 하나씩 차지한다.
+ * 일정은 시간 → 순서 순으로 정렬되므로, 시간이 있는 일정은 시간이 서로 옮겨 가고 시간이 없는 일정은 순서만 바뀐다.
+ * 바뀌는 일정만 돌려주고(변화 없으면 빈 배열), orderedPlaceIds 가 그날 방문 장소와 맞지 않으면 null.
+ */
+export function planReorderVisits(
+  items: ScheduleItem[],
+  places: Place[],
+  day: string,
+  orderedPlaceIds: string[],
+): VisitUpdate[] | null {
+  const known = new Set(places.map((p) => p.id));
+  const seen = new Set<string>();
+  const slots: ScheduleItem[] = []; // 현재 방문 순서대로, 장소별 첫 일정
+  for (const it of groupByDay(items).get(day) ?? []) {
+    if (it.placeId && known.has(it.placeId) && !seen.has(it.placeId)) {
+      seen.add(it.placeId);
+      slots.push(it);
+    }
+  }
+  if (orderedPlaceIds.length !== slots.length || new Set(orderedPlaceIds).size !== slots.length) return null;
+  if (!orderedPlaceIds.every((id) => seen.has(id))) return null;
+
+  const byPlace = new Map(slots.map((it) => [it.placeId as string, it]));
+  const updates: VisitUpdate[] = [];
+  orderedPlaceIds.forEach((placeId, k) => {
+    const item = byPlace.get(placeId) as ScheduleItem;
+    const slot = slots[k];
+    if (item.id !== slot.id) updates.push({ id: item.id, start: toStart(day, timeOf(slot.start)), order: slot.order });
+  });
+  return updates;
 }
 
 /** 장소 → 방문하는 날의 Day 번호들 (days 의 1부터 시작하는 순번, 오름차순) */
