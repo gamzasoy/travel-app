@@ -34,3 +34,13 @@ https://<배포주소>/t/<여행 페이지 ID>
 
 링크로 들어와 PIN 을 입력하고 "나는 누구인가요?"에서 이름을 고르면 30일간 유지됩니다.
 PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 `openssl rand -hex 32` 로 만든 값을 쓰세요.
+
+## 구글 지도 (선택)
+
+키가 없어도 앱은 동작합니다. 지도 대신 안내가 보이고, 장소는 이름·주소를 직접 입력해 저장할 수 있어요(길찾기는 이름·주소 검색).
+키를 설정하면 지도·마커·날짜별 경로선·장소 검색(자동완성)이 켜집니다.
+
+1. Google Cloud 에서 **Maps JavaScript API** 와 **Places API (New)** 를 활성화
+2. API 키 발급 → HTTP referrer 를 배포 도메인(와 `localhost:3000`)으로 제한
+3. 지도 → 지도 관리에서 Map ID 생성 (없으면 개발용 `DEMO_MAP_ID` 사용)
+4. `.env.local` 에 `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` 설정 (Vercel 은 환경변수에도 등록)

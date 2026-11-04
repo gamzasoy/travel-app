@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { dayLabel, directionsUrl, groupByDay, timeOf } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
@@ -16,6 +18,7 @@ interface Props {
 type Editing = { mode: "new" } | { mode: "edit"; item: ScheduleItem } | null;
 
 export function ScheduleView({ days, defaultDay, today, items, places }: Props) {
+  const { tripId } = useParams<{ tripId: string }>();
   const [day, setDay] = useState<string | null>(defaultDay);
   const [editing, setEditing] = useState<Editing>(null);
 
@@ -68,7 +71,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
           ) : (
             <ol className="flex flex-col gap-2">
               {list.map((it) => (
-                <ScheduleCard key={it.id} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
+                <ScheduleCard key={it.id} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
               ))}
             </ol>
           )}
@@ -80,7 +83,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
           <h2 className="mb-1 text-xs font-semibold text-slate-500">날짜 미정</h2>
           <ol className="flex flex-col gap-2">
             {undated.map((it) => (
-              <ScheduleCard key={it.id} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
+              <ScheduleCard key={it.id} tripId={tripId} item={it} place={it.placeId ? placeById.get(it.placeId) : undefined} onEdit={() => setEditing({ mode: "edit", item: it })} />
             ))}
           </ol>
         </section>
@@ -108,7 +111,7 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
   );
 }
 
-function ScheduleCard({ item, place, onEdit }: { item: ScheduleItem; place?: Place; onEdit: () => void }) {
+function ScheduleCard({ tripId, item, place, onEdit }: { tripId: string; item: ScheduleItem; place?: Place; onEdit: () => void }) {
   const time = timeOf(item.start);
   return (
     <li className="flex gap-3 rounded-xl border border-slate-200 p-3">
@@ -120,14 +123,22 @@ function ScheduleCard({ item, place, onEdit }: { item: ScheduleItem; place?: Pla
           {item.note && <span className="mt-1 block whitespace-pre-line text-xs text-slate-500">{item.note}</span>}
         </button>
         {place && (
-          <a
-            href={directionsUrl(place)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-block rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 active:bg-slate-50"
-          >
-            구글맵 길찾기 ↗
-          </a>
+          <div className="mt-2 flex gap-2">
+            <Link
+              href={`/t/${tripId}/map?p=${place.id}`}
+              className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 active:bg-slate-50"
+            >
+              지도에서 보기
+            </Link>
+            <a
+              href={directionsUrl(place)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-lg border border-slate-300 px-2 py-1 text-xs text-slate-700 active:bg-slate-50"
+            >
+              구글맵 길찾기 ↗
+            </a>
+          </div>
         )}
       </div>
     </li>
