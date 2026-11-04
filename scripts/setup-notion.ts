@@ -29,7 +29,12 @@ if (!token || !parentArg) {
   process.exit(1);
 }
 
-const hex = parentArg.replace(/-/g, "").match(/[0-9a-f]{32}/i)?.[0];
+// URL 의 쿼리스트링을 떼고, 끝에서부터 32자리 hex 를 찾는다.
+// (제목 슬러그가 "DB-", "Cafe-" 처럼 hex 문자로 끝나면 앞에서부터 찾을 때 ID 가 밀린다)
+const hex = parentArg
+  .split(/[?#]/)[0]
+  .replace(/-/g, "")
+  .match(/[0-9a-f]{32}(?![0-9a-f])/i)?.[0];
 if (!hex) {
   console.error("상위 페이지 ID(32자리)를 찾을 수 없습니다.");
   process.exit(1);
