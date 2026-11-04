@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import * as repo from "@/lib/notion/repo";
-import { planReorderVisits } from "@/lib/map";
+import { planPlaceDays, planReorderVisits } from "@/lib/map";
 import { PLACE_CATEGORIES } from "@/lib/types";
 import type { ActionResult } from "./expenses";
 
@@ -22,9 +22,21 @@ const placeInput = z
   .refine((p) => (p.lat === null) === (p.lng === null), { message: "좌표가 올바르지 않아요." });
 export type PlaceInput = z.input<typeof placeInput>;
 
+/** 장소를 방문하는 날짜(YYYY-MM-DD)들 */
+const daysInput = z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(60);
+
+/** 장소의 방문 날짜를 일정에 반영한다 (새 날짜는 일정 추가, 바뀐 날짜는 이동, 해제된 날짜는 삭제) */
+async function syncPlaceDays(tripId: string, place: { id: string; name: string }, days: string[]) {
+  const items = await repo.listSchedule(tripId);
+  const plan = planPlaceDays(items, { ...place, tripId }, days);
+  for (const item of plan.create) await repo.createScheduleItem(item);
+  for (const u of plan.update) await repo.updateScheduleItem(u.id, u.item);
+  for (const id of plan.remove) await repo.deleteScheduleItem(id, tripId);
+}
+
 const fail = (error: string): ActionResult => ({ ok: false, error });
 
-export async function addPlace(input: PlaceInput): Promise<ActionResult> {
+export async function addPlace(input: PlaceInput, daysRaw: string[] = []): Promise<ActionResult> {
   const { tripId } = await requireSession();
   const parsed = placeInput.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않아요.");
@@ -35,11 +47,21 @@ export async function addPlace(input: PlaceInput): Promise<ActionResult> {
   if (d.googlePlaceId && existing.some((p) => p.googlePlaceId === d.googlePlaceId)) {
     return fail("이미 추가된 장소예요.");
   }
-  await repo.createPlace({ tripId, ...d, visited: false });
+  const days = daysInput.safeParse(daysRaw);
+  if (!days.success) return fail("날짜가 올바르지 않아요.");
+  const id = await repo.createPlace({ tripId, ...d, visited: false });
+  if (days.data.length > 0) {
+    try {
+      await syncPlaceDays(tripId, { id, name: d.name }, days.data);
+    } catch {
+      return fail("장소는 저장됐지만 날짜를 일정에 넣지 못했어요. 장소를 눌러 날짜를 다시 골라주세요.");
+    }
+  }
   return { ok: true };
 }
 
-export async function editPlace(placeId: string, input: PlaceInput): Promise<ActionResult> {
+/** daysRaw 가 undefined 면 날짜는 건드리지 않는다 (빈 배열이면 모든 날짜 해제) */
+export async function editPlace(placeId: string, input: PlaceInput, daysRaw?: string[]): Promise<ActionResult> {
   const { tripId } = await requireSession();
   const id = idSchema.safeParse(placeId);
   const existing = await repo.listPlaces(tripId);
@@ -52,7 +74,16 @@ export async function editPlace(placeId: string, input: PlaceInput): Promise<Act
   if (d.googlePlaceId && existing.some((p) => p.id !== current.id && p.googlePlaceId === d.googlePlaceId)) {
     return fail("이미 추가된 장소예요.");
   }
+  const days = daysRaw === undefined ? null : daysInput.safeParse(daysRaw);
+  if (days && !days.success) return fail("날짜가 올바르지 않아요.");
   await repo.updatePlace(current.id, { tripId, ...d, visited: current.visited });
+  if (days?.success) {
+    try {
+      await syncPlaceDays(tripId, { id: current.id, name: d.name }, days.data);
+    } catch {
+      return fail("장소는 저장됐지만 날짜를 일정에 반영하지 못했어요. 다시 시도해주세요.");
+    }
+  }
   return { ok: true };
 }
 

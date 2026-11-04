@@ -183,7 +183,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
           <>
             {sortable && <p className="mb-2 text-xs text-muted-foreground">장소를 꾹 눌러 끌면 방문 순서가 바뀌어요. (일정의 시간도 같이 옮겨져요)</p>}
             {sortable ? (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+              <DndContext id="place-order" sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={visiblePlaces.map((p) => p.id)} strategy={verticalListSortingStrategy}>
                   <ul className="divide-y divide-border rounded-xl border border-border">
                     {visiblePlaces.map((p, i) => (
@@ -203,8 +203,19 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
         )}
       </section>
 
-      {adding && <PlaceSheet searchEnabled={hasKey} onClose={() => setAdding(false)} />}
-      {editingPlace && <PlaceSheet key={editingPlace.id} place={editingPlace} searchEnabled={hasKey} onClose={() => setEditingId(null)} />}
+      {adding && (
+        <PlaceSheet searchEnabled={hasKey} days={days} initialDays={activeDay ? [activeDay] : []} onClose={() => setAdding(false)} />
+      )}
+      {editingPlace && (
+        <PlaceSheet
+          key={editingPlace.id}
+          place={editingPlace}
+          searchEnabled={hasKey}
+          days={days}
+          initialDays={days.filter((d) => byDay.get(d)?.some((p) => p.id === editingPlace.id))}
+          onClose={() => setEditingId(null)}
+        />
+      )}
     </div>
   );
 }

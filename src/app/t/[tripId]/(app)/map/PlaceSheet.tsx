@@ -2,15 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { addPlace, editPlace } from "@/actions/places";
+import { dayLabel } from "@/lib/schedule";
 import { PLACE_CATEGORIES, type Place, type PlaceCategory } from "@/lib/types";
 import { PlaceSearch } from "./PlaceSearch";
 import { safe } from "@/lib/safe-action";
 
-/**
- * searchEnabled: 구글 키가 있어 <APIProvider> 안에서 렌더링될 때만 true
- * place: 있으면 수정 모드 (없으면 새 장소 추가)
- */
-export function PlaceSheet({ searchEnabled, onClose, place }: { searchEnabled: boolean; onClose: () => void; place?: Place }) {
+interface Props {
+  /** 구글 키가 있어 <APIProvider> 안에서 렌더링될 때만 true */
+  searchEnabled: boolean;
+  onClose: () => void;
+  /** 있으면 수정 모드 (없으면 새 장소 추가) */
+  place?: Place;
+  /** 여행 날짜들. 비어 있으면 날짜 선택을 숨기고 날짜는 건드리지 않는다 */
+  days: string[];
+  /** 처음에 선택돼 있을 방문 날짜 (추가: 보고 있던 날, 수정: 지금 연결된 날들) */
+  initialDays: string[];
+}
+
+export function PlaceSheet({ searchEnabled, onClose, place, days, initialDays }: Props) {
+  const [picked, setPicked] = useState<Set<string>>(() => new Set(initialDays));
   const [name, setName] = useState(place?.name ?? "");
   const [address, setAddress] = useState(place?.address ?? "");
   const [category, setCategory] = useState<PlaceCategory | null>(place?.category ?? null);
@@ -32,7 +42,10 @@ export function PlaceSheet({ searchEnabled, onClose, place }: { searchEnabled: b
         googlePlaceId: coords?.googlePlaceId ?? "",
         category,
       };
-      const res = await safe(() => (place ? editPlace(place.id, input) : addPlace(input)));
+      const chosen = days.filter((d) => picked.has(d));
+      const res = await safe(() =>
+        place ? editPlace(place.id, input, days.length > 0 ? chosen : undefined) : addPlace(input, chosen),
+      );
       if (res.ok) onClose();
       else setError(res.error);
     });
@@ -102,6 +115,38 @@ export function PlaceSheet({ searchEnabled, onClose, place }: { searchEnabled: b
             </button>
           ))}
         </div>
+
+        {days.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted-foreground">방문 날짜 (선택)</p>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="방문 날짜">
+              {days.map((d, i) => {
+                const on = picked.has(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() =>
+                      setPicked((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(d)) next.delete(d);
+                        else next.add(d);
+                        return next;
+                      })
+                    }
+                    className={`rounded-full border px-3 py-1 text-sm ${on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+                  >
+                    Day {i + 1} · {dayLabel(d)}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              고른 날의 일정에 이 장소가 자동으로 추가돼요.{place && " 해제한 날짜의 일정은 삭제되고, 날짜만 바꾸면 일정이 그 날로 옮겨져요."}
+            </p>
+          </div>
+        )}
 
         {error && (
           <p role="alert" className="text-sm text-destructive">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planReorderVisits, routeForDay } from "./map";
+import { boundsOf, categoryColor, dayNumbersByPlace, hasCoords, placesByDay, planPlaceDays, planReorderVisits, routeForDay } from "./map";
 import type { Place, ScheduleItem } from "./types";
 
 const place = (id: string, lat: number | null, lng: number | null): Place => ({
@@ -135,6 +135,62 @@ describe("planReorderVisits", () => {
     expect(planReorderVisits([ia, ib], places, D, ["a", "a"])).toBeNull();
     expect(planReorderVisits([ia, ib], places, D, ["a", "c"])).toBeNull();
     expect(planReorderVisits([ia, ib], places, "2026-12-02", ["a", "b"])).toBeNull();
+  });
+});
+
+describe("planPlaceDays", () => {
+  const pl = { id: "p1", name: "센소지", tripId: "t" };
+  const D1 = "2026-12-01";
+  const D2 = "2026-12-02";
+  const D3 = "2026-12-03";
+
+  it("새 날짜를 고르면 그날 맨 뒤에 장소 이름으로 일정을 만든다", () => {
+    const other = item(`${D1}T09:00:00`, "x", 4); // 같은 날 다른 일정 → order 는 그 뒤
+    const plan = planPlaceDays([other], pl, [D1]);
+    expect(plan.create).toEqual([{ tripId: "t", title: "센소지", start: D1, placeId: "p1", note: "", order: 5 }]);
+    expect(plan.update).toEqual([]);
+    expect(plan.remove).toEqual([]);
+  });
+
+  it("이미 있는 날짜는 그대로 두고, 여러 날짜를 고를 수 있다", () => {
+    const have = item(`${D1}T10:00:00`, "p1", 0);
+    const plan = planPlaceDays([have], pl, [D1, D2]);
+    expect(plan.create.map((c) => c.start)).toEqual([D2]);
+    expect(plan.update).toEqual([]);
+    expect(plan.remove).toEqual([]);
+  });
+
+  it("날짜를 바꾸면 기존 일정을 새 날짜로 옮긴다 (제목·시간·메모 유지)", () => {
+    const have = { ...item(`${D1}T10:00:00`, "p1", 0), title: "아침 센소지", note: "일찍" };
+    const plan = planPlaceDays([have], pl, [D2]);
+    expect(plan.create).toEqual([]);
+    expect(plan.remove).toEqual([]);
+    expect(plan.update).toEqual([
+      { id: have.id, item: { tripId: "t", title: "아침 센소지", start: `${D2}T10:00:00`, placeId: "p1", note: "일찍", order: 0 } },
+    ]);
+  });
+
+  it("날짜를 해제하면 그날 일정은 삭제한다 (날짜 없음 일정·다른 장소 일정은 그대로)", () => {
+    const a = item(`${D1}T10:00:00`, "p1", 0);
+    const b = item(`${D2}`, "p1", 0);
+    const undated = item(null, "p1", 0);
+    const other = item(D1, "x", 1);
+    const plan = planPlaceDays([a, b, undated, other], pl, [D2]);
+    expect(plan.remove).toEqual([a.id]);
+    expect(plan.create).toEqual([]);
+    expect(plan.update).toEqual([]);
+    expect(planPlaceDays([a, b, undated, other], pl, []).remove.sort()).toEqual([a.id, b.id].sort());
+  });
+
+  it("해제와 추가가 함께면 옮기고, 남는 쪽은 만들거나 삭제한다", () => {
+    const a = item(D1, "p1", 0);
+    const b = item(D2, "p1", 0);
+    // D1, D2 해제 → D3 추가: 하나는 D3 로 이동, 하나는 삭제
+    const plan = planPlaceDays([a, b], pl, [D3]);
+    expect(plan.update).toHaveLength(1);
+    expect(plan.update[0].item.start).toBe(D3);
+    expect(plan.remove).toHaveLength(1);
+    expect(plan.create).toEqual([]);
   });
 });
 
