@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { joinTrip, verifyPin, type MemberChoice } from "@/actions/session";
+import { safe } from "@/lib/safe-action";
 
 export function JoinForm({ tripId, tripName }: { tripId: string; tripName: string }) {
   const [pin, setPin] = useState("");
@@ -13,7 +14,7 @@ export function JoinForm({ tripId, tripName }: { tripId: string; tripName: strin
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await verifyPin(tripId, pin);
+      const res = await safe(() => verifyPin(tripId, pin));
       if (res.ok) setMembers(res.members);
       else setError(res.error);
     });

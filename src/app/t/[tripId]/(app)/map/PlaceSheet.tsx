@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addPlace } from "@/actions/places";
 import { PLACE_CATEGORIES, type PlaceCategory } from "@/lib/types";
 import { PlaceSearch } from "./PlaceSearch";
+import { safe } from "@/lib/safe-action";
 
 /** searchEnabled: 구글 키가 있어 <APIProvider> 안에서 렌더링될 때만 true */
 export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean; onClose: () => void }) {
@@ -18,14 +19,14 @@ export function PlaceSheet({ searchEnabled, onClose }: { searchEnabled: boolean;
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await addPlace({
+      const res = await safe(() => addPlace({
         name,
         address,
         lat: coords?.lat ?? null,
         lng: coords?.lng ?? null,
         googlePlaceId: coords?.googlePlaceId ?? "",
         category,
-      });
+      }));
       if (res.ok) onClose();
       else setError(res.error);
     });

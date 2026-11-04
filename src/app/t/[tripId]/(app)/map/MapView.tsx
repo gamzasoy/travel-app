@@ -8,6 +8,7 @@ import { dayLabel, directionsUrl } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
 import { GoogleMap } from "./GoogleMap";
 import { PlaceSheet } from "./PlaceSheet";
+import { safe } from "@/lib/safe-action";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
@@ -49,7 +50,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
     setError(null);
     startTransition(async () => {
       optimistic?.();
-      const res = await fn();
+      const res = await safe(fn);
       if (!res.ok) setError(res.error);
     });
   };

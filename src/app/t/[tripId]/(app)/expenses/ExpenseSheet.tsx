@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addExpense, editExpense, removeExpense, type ExpenseInput } from "@/actions/expenses";
 import { convert, formatMoney } from "@/lib/currency";
 import { EXPENSE_CATEGORIES, type Currency, type Expense, type ExpenseCategory, type Member } from "@/lib/types";
+import { safe } from "@/lib/safe-action";
 
 interface Props {
   meId: string | null;
@@ -60,7 +61,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
       placeId: expense?.placeId ?? null,
     };
     startTransition(async () => {
-      const res = expense ? await editExpense(expense.id, input) : await addExpense(input);
+      const res = await safe(() => (expense ? editExpense(expense.id, input) : addExpense(input)));
       if (res.ok) onClose();
       else setError(res.error);
     });
@@ -69,7 +70,7 @@ export function ExpenseSheet({ meId, members, rate, expense, onClose }: Props) {
   const remove = () => {
     if (!expense || !confirm("이 지출을 삭제할까요?")) return;
     startTransition(async () => {
-      const res = await removeExpense(expense.id);
+      const res = await safe(() => removeExpense(expense.id));
       if (res.ok) onClose();
       else setError(res.error);
     });

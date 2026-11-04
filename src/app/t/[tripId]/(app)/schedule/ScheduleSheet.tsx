@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { addScheduleItem, editScheduleItem, removeScheduleItem, type ScheduleInput } from "@/actions/schedule";
 import { dateOf, timeOf } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
+import { safe } from "@/lib/safe-action";
 
 interface Props {
   item: ScheduleItem | null;
@@ -26,7 +27,7 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
     setError(null);
     const input: ScheduleInput = { title, date, time: time || null, placeId: placeId || null, note };
     startTransition(async () => {
-      const res = item ? await editScheduleItem(item.id, input) : await addScheduleItem(input);
+      const res = await safe(() => (item ? editScheduleItem(item.id, input) : addScheduleItem(input)));
       if (res.ok) onClose();
       else setError(res.error);
     });
@@ -35,7 +36,7 @@ export function ScheduleSheet({ item, defaultDate, places, onClose }: Props) {
   const remove = () => {
     if (!item || !confirm("이 일정을 삭제할까요?")) return;
     startTransition(async () => {
-      const res = await removeScheduleItem(item.id);
+      const res = await safe(() => removeScheduleItem(item.id));
       if (res.ok) onClose();
       else setError(res.error);
     });

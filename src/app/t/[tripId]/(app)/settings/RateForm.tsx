@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { saveManualRate } from "@/actions/settings";
+import { safe } from "@/lib/safe-action";
 
 export function RateForm({ manualRate, liveRate }: { manualRate: number | null; liveRate: number | null }) {
   const [text, setText] = useState(manualRate ? String(manualRate) : "");
@@ -10,7 +11,7 @@ export function RateForm({ manualRate, liveRate }: { manualRate: number | null; 
 
   const save = (value: number | null) =>
     startTransition(async () => {
-      const res = await saveManualRate(value);
+      const res = await safe(() => saveManualRate(value));
       setMsg(res.ok ? { ok: true, text: value === null ? "자동 환율을 사용해요." : "저장했어요." } : { ok: false, text: res.error });
       if (res.ok && value === null) setText("");
     });
