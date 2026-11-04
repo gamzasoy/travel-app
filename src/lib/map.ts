@@ -5,6 +5,7 @@ export const CATEGORY_COLOR: Record<PlaceCategory, string> = {
   숙소: "#8b5cf6",
   맛집: "#f97316",
   관광: "#f4b8c4",
+  쇼핑: "#14b8a6",
   교통: "#64748b",
 };
 export const DEFAULT_PIN_COLOR = "#94a3b8";

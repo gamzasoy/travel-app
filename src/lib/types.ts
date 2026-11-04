@@ -3,7 +3,7 @@ export type Currency = "JPY" | "KRW";
 export const EXPENSE_CATEGORIES = ["식비", "교통", "숙소", "쇼핑", "관광", "기타"] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
-export const PLACE_CATEGORIES = ["숙소", "맛집", "관광", "교통"] as const;
+export const PLACE_CATEGORIES = ["숙소", "맛집", "관광", "쇼핑", "교통"] as const;
 export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];
 
 export interface Trip {

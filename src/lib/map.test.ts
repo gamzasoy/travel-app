@@ -66,6 +66,7 @@ describe("boundsOf / hasCoords / categoryColor", () => {
   });
   it("카테고리 색", () => {
     expect(categoryColor("맛집")).toBe("#f97316");
+    expect(categoryColor("쇼핑")).toBe("#14b8a6");
     expect(categoryColor(null)).toBe("#94a3b8");
   });
 });
