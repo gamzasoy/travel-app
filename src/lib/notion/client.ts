@@ -20,3 +20,6 @@ export function notion(): Client {
 export function dsId(key: DsKey): string {
   return requireEnv(DS_ENV[key]);
 }
+
+/** 데이터 소스 환경변수가 설정돼 있는지 (나중에 추가된 DB 는 기존 배포에 없을 수 있다) */
+export const hasDs = (key: DsKey): boolean => !!process.env[DS_ENV[key]];

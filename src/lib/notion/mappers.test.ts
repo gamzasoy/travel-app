@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  checklistItemToProperties,
   expenseToProperties,
+  pageToChecklistItem,
   pageToExpense,
   pageToMember,
   pageToPlace,
+  pageToReservation,
   pageToScheduleItem,
   pageToTrip,
   placeToProperties,
+  reservationToProperties,
   scheduleItemToProperties,
 } from "./mappers";
 import { P } from "./schema";
@@ -188,6 +192,76 @@ describe("쓰기 변환", () => {
       note: "",
       order: 0,
     }) as Props;
+    expect(props[P.when]).toEqual({ date: null });
+  });
+});
+
+describe("체크리스트", () => {
+  it("페이지 ↔ ChecklistItem", () => {
+    const item = pageToChecklistItem({
+      id: "c1",
+      properties: {
+        [P.title]: { title: rt("여권") },
+        [P.trip]: rel("t1"),
+        [P.expenseCategory]: { select: { name: "서류" } },
+        [P.checked]: { checkbox: true },
+        [P.order]: { number: 3 },
+      },
+    });
+    expect(item).toEqual({ id: "c1", tripId: "t1", title: "여권", category: "서류", checked: true, order: 3 });
+
+    const props = checklistItemToProperties({ ...item, category: null, checked: false }) as Props;
+    expect(props[P.title]).toEqual({ title: [{ text: { content: "여권" } }] });
+    expect(props[P.checked]).toEqual({ checkbox: false });
+    expect(props[P.expenseCategory]).toEqual({ select: null });
+  });
+
+  it("모르는 분류·빈 값은 기본값", () => {
+    const item = pageToChecklistItem({ id: "c2", properties: { [P.expenseCategory]: { select: { name: "식비" } } } });
+    expect(item).toMatchObject({ title: "", category: null, checked: false, order: 0 });
+  });
+});
+
+describe("예약", () => {
+  it("페이지 → Reservation (기간·링크)", () => {
+    const r = pageToReservation({
+      id: "r1",
+      properties: {
+        [P.title]: { title: rt("인천→하네다 KE719") },
+        [P.trip]: rel("t1"),
+        [P.reservationKind]: { select: { name: "항공" } },
+        [P.when]: { date: { start: "2026-12-01T09:30:00.000+09:00", end: "2026-12-01T11:45:00.000+09:00" } },
+        [P.confirmation]: { rich_text: rt("ABC123") },
+        [P.note]: { rich_text: rt("") },
+        [P.link]: { url: "https://example.com/r" },
+      },
+    });
+    expect(r).toMatchObject({
+      kind: "항공",
+      start: "2026-12-01T09:30:00.000+09:00",
+      end: "2026-12-01T11:45:00.000+09:00",
+      confirmation: "ABC123",
+      url: "https://example.com/r",
+    });
+  });
+
+  const base = { tripId: "t1", title: "x", kind: null, confirmation: "", note: "", url: "" };
+
+  it("시간 있는 기간은 현지 시간대와 함께 저장", () => {
+    const props = reservationToProperties({ ...base, start: "2026-12-01T09:30:00", end: "2026-12-01T11:45:00" }) as Props;
+    expect(props[P.when]).toEqual({
+      date: { start: "2026-12-01T09:30:00", end: "2026-12-01T11:45:00", time_zone: "Asia/Tokyo" },
+    });
+    expect(props[P.link]).toEqual({ url: null });
+  });
+
+  it("날짜만 있는 기간 (숙소 체크인~체크아웃)", () => {
+    const props = reservationToProperties({ ...base, start: "2026-12-01", end: "2026-12-04" }) as Props;
+    expect(props[P.when]).toEqual({ date: { start: "2026-12-01", end: "2026-12-04" } });
+  });
+
+  it("시작이 없으면 날짜 비움", () => {
+    const props = reservationToProperties({ ...base, start: null, end: "2026-12-04" }) as Props;
     expect(props[P.when]).toEqual({ date: null });
   });
 });

@@ -1,19 +1,25 @@
 import { TRIP_TIME_ZONE } from "../schedule";
 import { P } from "./schema";
 import type {
+  ChecklistCategory,
+  ChecklistItem,
   Currency,
   Expense,
   ExpenseCategory,
   Member,
+  NewChecklistItem,
   NewExpense,
   NewPlace,
+  NewReservation,
   NewScheduleItem,
   Place,
   PlaceCategory,
+  Reservation,
+  ReservationKind,
   ScheduleItem,
   Trip,
 } from "@/lib/types";
-import { EXPENSE_CATEGORIES, PLACE_CATEGORIES } from "@/lib/types";
+import { CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "@/lib/types";
 
 /** 매퍼가 필요로 하는 최소한의 Notion 페이지 모양 */
 export interface NotionPageLike {
@@ -48,6 +54,10 @@ const getDate = (p: NotionPageLike, name: string) => {
   };
 };
 const getCheckbox = (p: NotionPageLike, name: string) => rec(p.properties[name]).checkbox === true;
+const getUrl = (p: NotionPageLike, name: string): string => {
+  const u = rec(p.properties[name]).url;
+  return typeof u === "string" ? u : "";
+};
 const getRelationIds = (p: NotionPageLike, name: string): string[] =>
   arr(rec(p.properties[name]).relation).map((r) => String(rec(r).id));
 
@@ -121,6 +131,32 @@ export function pageToExpense(page: NotionPageLike): Expense {
   };
 }
 
+export function pageToChecklistItem(page: NotionPageLike): ChecklistItem {
+  return {
+    id: page.id,
+    tripId: getRelationIds(page, P.trip)[0] ?? "",
+    title: getTitle(page, P.title),
+    category: asOneOf<ChecklistCategory>(getSelect(page, P.expenseCategory), CHECKLIST_CATEGORIES),
+    checked: getCheckbox(page, P.checked),
+    order: getNumber(page, P.order) ?? 0,
+  };
+}
+
+export function pageToReservation(page: NotionPageLike): Reservation {
+  const when = getDate(page, P.when);
+  return {
+    id: page.id,
+    tripId: getRelationIds(page, P.trip)[0] ?? "",
+    title: getTitle(page, P.title),
+    kind: asOneOf<ReservationKind>(getSelect(page, P.reservationKind), RESERVATION_KINDS),
+    start: when.start,
+    end: when.end,
+    confirmation: getText(page, P.confirmation),
+    note: getText(page, P.note),
+    url: getUrl(page, P.link),
+  };
+}
+
 // ---------- 쓰기 (pages.create / pages.update 의 properties) ----------
 const title = (content: string) => ({ title: [{ text: { content } }] });
 const text = (content: string) => ({ rich_text: content ? [{ text: { content } }] : [] });
@@ -167,6 +203,39 @@ export function scheduleItemToProperties(s: NewScheduleItem) {
     [P.place]: relation(s.placeId ? [s.placeId] : []),
     [P.note]: text(s.note),
     [P.order]: { number: s.order },
+  };
+}
+
+export function checklistItemToProperties(c: NewChecklistItem) {
+  return {
+    [P.title]: title(c.title),
+    [P.trip]: relation([c.tripId]),
+    [P.expenseCategory]: select(c.category),
+    [P.checked]: { checkbox: c.checked },
+    [P.order]: { number: c.order },
+  };
+}
+
+/** 노션 date 는 시작/끝이 같은 형식(둘 다 날짜, 또는 둘 다 시간 포함)일 때만 범위로 저장할 수 있다 */
+function dateRangeProp(start: string | null, end: string | null) {
+  if (!start) return { date: null };
+  const timed = start.includes("T");
+  const sameShape = end !== null && end.includes("T") === timed;
+  const range: Record<string, string> = { start };
+  if (end && sameShape) range.end = end;
+  if (timed) range.time_zone = TRIP_TIME_ZONE;
+  return { date: range };
+}
+
+export function reservationToProperties(r: NewReservation) {
+  return {
+    [P.title]: title(r.title),
+    [P.trip]: relation([r.tripId]),
+    [P.reservationKind]: select(r.kind),
+    [P.when]: dateRangeProp(r.start, r.end),
+    [P.confirmation]: text(r.confirmation),
+    [P.note]: text(r.note),
+    [P.link]: { url: r.url || null },
   };
 }
 
