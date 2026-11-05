@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { addPlace, editPlace } from "@/actions/places";
-import { dayLabel } from "@/lib/schedule";
 import { PLACE_CATEGORIES, type Place, type PlaceCategory } from "@/lib/types";
+import { DayPicker, toggleIn } from "./DayPicker";
 import { PlaceSearch } from "./PlaceSearch";
 import { safe } from "@/lib/safe-action";
 
@@ -119,29 +119,7 @@ export function PlaceSheet({ searchEnabled, onClose, place, days, initialDays }:
         {days.length > 0 && (
           <div>
             <p className="mb-1 text-xs text-muted-foreground">방문 날짜 (선택)</p>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="방문 날짜">
-              {days.map((d, i) => {
-                const on = picked.has(d);
-                return (
-                  <button
-                    key={d}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() =>
-                      setPicked((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(d)) next.delete(d);
-                        else next.add(d);
-                        return next;
-                      })
-                    }
-                    className={`rounded-full border px-3 py-1 text-sm ${on ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
-                  >
-                    Day {i + 1} · {dayLabel(d)}
-                  </button>
-                );
-              })}
-            </div>
+            <DayPicker days={days} picked={picked} onToggle={(d) => setPicked((prev) => toggleIn(prev, d))} />
             <p className="mt-1 text-xs text-muted-foreground">
               고른 날의 일정에 이 장소가 자동으로 추가돼요.{place && " 해제한 날짜의 일정은 삭제되고, 날짜만 바꾸면 일정이 그 날로 옮겨져요."}
             </p>
