@@ -3,32 +3,41 @@ import { APIErrorCode, APIResponseError } from "@notionhq/client";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { dsId, notion } from "./client";
 import {
+  checklistItemToProperties,
   expenseToProperties,
   memberToProperties,
+  pageToChecklistItem,
   pageToExpense,
   pageToMember,
   pageToPlace,
+  pageToReservation,
   pageToScheduleItem,
   pageToTrip,
   placeToProperties,
+  reservationToProperties,
   scheduleItemToProperties,
   tripSettingsToProperties,
   type NotionPageLike,
 } from "./mappers";
 import { P, type DsKey } from "./schema";
+import { compareReservations } from "@/lib/reservation";
 import type {
+  ChecklistItem,
   Expense,
   Member,
+  NewChecklistItem,
   NewExpense,
   NewPlace,
+  NewReservation,
   NewScheduleItem,
   Place,
+  Reservation,
   ScheduleItem,
   Trip,
 } from "@/lib/types";
 
 // ---------- 캐시 태그 ----------
-export type Collection = "members" | "schedule" | "places" | "expenses";
+export type Collection = "members" | "schedule" | "places" | "expenses" | "checklist" | "reservations";
 export const tripTag = (tripId: string) => `trip:${tripId}`;
 export const tag = (c: Collection, tripId: string) => `${c}:${tripId}`;
 
@@ -123,6 +132,17 @@ export async function listSchedule(tripId: string): Promise<ScheduleItem[]> {
   );
 }
 
+export async function listChecklist(tripId: string): Promise<ChecklistItem[]> {
+  const items = await cachedList<ChecklistItem>("checklist", "checklist", pageToChecklistItem)(tripId);
+  return [...items].sort((a, b) => a.order - b.order);
+}
+
+/** 일시순, 일시가 없는 예약은 맨 뒤 */
+export async function listReservations(tripId: string): Promise<Reservation[]> {
+  const items = await cachedList<Reservation>("reservations", "reservations", pageToReservation)(tripId);
+  return [...items].sort(compareReservations);
+}
+
 // ---------- 쓰기 (쓰기 후 해당 컬렉션 캐시 무효화) ----------
 async function create(key: DsKey, properties: Record<string, unknown>): Promise<string> {
   const page = await notion().pages.create({
@@ -177,6 +197,43 @@ export async function updateScheduleItem(id: string, s: NewScheduleItem) {
 export async function deleteScheduleItem(id: string, tripId: string) {
   await trash(id);
   revalidateTag(tag("schedule", tripId));
+}
+
+export async function createChecklistItem(c: NewChecklistItem) {
+  const id = await create("checklist", checklistItemToProperties(c));
+  revalidateTag(tag("checklist", c.tripId));
+  return id;
+}
+/** 여러 개를 한 번에 추가 (기본 준비물). 노션 속도 제한을 고려해 순서대로 만든다. */
+export async function createChecklistItems(items: NewChecklistItem[]) {
+  for (const c of items) await create("checklist", checklistItemToProperties(c));
+  if (items[0]) revalidateTag(tag("checklist", items[0].tripId));
+}
+export async function updateChecklistItem(id: string, c: NewChecklistItem) {
+  await update(id, checklistItemToProperties(c));
+  revalidateTag(tag("checklist", c.tripId));
+}
+export async function setChecklistChecked(id: string, tripId: string, checked: boolean) {
+  await update(id, { [P.checked]: { checkbox: checked } });
+  revalidateTag(tag("checklist", tripId));
+}
+export async function deleteChecklistItem(id: string, tripId: string) {
+  await trash(id);
+  revalidateTag(tag("checklist", tripId));
+}
+
+export async function createReservation(r: NewReservation) {
+  const id = await create("reservations", reservationToProperties(r));
+  revalidateTag(tag("reservations", r.tripId));
+  return id;
+}
+export async function updateReservation(id: string, r: NewReservation) {
+  await update(id, reservationToProperties(r));
+  revalidateTag(tag("reservations", r.tripId));
+}
+export async function deleteReservation(id: string, tripId: string) {
+  await trash(id);
+  revalidateTag(tag("reservations", tripId));
 }
 
 export async function createMember(m: { tripId: string; name: string; color: string | null }) {

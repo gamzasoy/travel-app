@@ -3,7 +3,7 @@
  * - 페이지 이동(navigate): 네트워크 우선 → 실패하면 마지막으로 본 페이지, 없으면 offline.html
  * - 그 외(서버 액션 POST, RSC 데이터 등)는 건드리지 않는다. 쓰기는 온라인에서만 가능.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const STATIC = `static-${VERSION}`;
 const PAGES = `pages-${VERSION}`;
 

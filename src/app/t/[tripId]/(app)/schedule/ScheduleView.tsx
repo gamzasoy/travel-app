@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { dayLabel, directionsUrl, groupByDay, timeOf } from "@/lib/schedule";
 import type { Place, ScheduleItem } from "@/lib/types";
+import type { DayWeather } from "@/lib/weather-util";
 import { ScheduleSheet } from "./ScheduleSheet";
 
 interface Props {
@@ -13,11 +14,12 @@ interface Props {
   today: string;
   items: ScheduleItem[];
   places: Place[];
+  weather: Record<string, DayWeather>;
 }
 
 type Editing = { mode: "new" } | { mode: "edit"; item: ScheduleItem } | null;
 
-export function ScheduleView({ days, defaultDay, today, items, places }: Props) {
+export function ScheduleView({ days, defaultDay, today, items, places, weather }: Props) {
   const { tripId } = useParams<{ tripId: string }>();
   const [day, setDay] = useState<string | null>(defaultDay);
   const [editing, setEditing] = useState<Editing>(null);
@@ -48,7 +50,10 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
                 >
                   <span className="block text-[10px] opacity-80">{d === today ? "오늘" : `Day ${i + 1}`}</span>
                   <span className="block font-semibold">{dayLabel(d)}</span>
-                  <span className="block text-[10px] opacity-80">{count}개</span>
+                  <span className="block text-[10px] opacity-80">
+                    {weather[d] ? `${weather[d].icon} ${weather[d].max ?? "-"}° · ` : ""}
+                    {count}개
+                  </span>
                 </button>
               );
             })}
@@ -61,6 +66,8 @@ export function ScheduleView({ days, defaultDay, today, items, places }: Props) 
           여행 기간이 비어 있어요. 일정을 추가하면 날짜가 생겨요.
         </p>
       )}
+
+      {activeDay && <WeatherCard day={activeDay} today={today} weather={weather[activeDay]} />}
 
       {activeDay && (
         <section aria-label={`${dayLabel(activeDay)} 일정`}>
@@ -152,5 +159,38 @@ function ScheduleCard({ tripId, item, place, index, onEdit }: { tripId: string; 
         )}
       </div>
     </li>
+  );
+}
+
+function WeatherCard({ day, today, weather }: { day: string; today: string; weather?: DayWeather }) {
+  if (!weather) {
+    // 지난 날은 조용히 생략, 앞으로의 날은 왜 없는지 한 줄로 안내
+    if (day < today) return null;
+    return (
+      <p className="text-xs text-muted-foreground">
+        🌤️ 날씨는 여행 약 2주 전부터 보여요. (일정에 장소를 연결하거나 숙소를 등록해 두세요)
+      </p>
+    );
+  }
+  return (
+    <section aria-label="날씨" className="flex items-center gap-3 rounded-xl bg-muted px-4 py-3">
+      <span className="text-3xl" aria-hidden>
+        {weather.icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="font-semibold">
+          {weather.label}
+          {weather.max !== null && (
+            <span className="ml-2 font-normal">
+              <span className="text-destructive">{weather.max}°</span>
+              {weather.min !== null && <span className="text-muted-foreground"> / {weather.min}°</span>}
+            </span>
+          )}
+        </p>
+        <p className="truncate text-xs text-muted-foreground">
+          {weather.pop !== null && `☔ 강수 ${weather.pop}% · `}기준: {weather.placeName}
+        </p>
+      </div>
+    </section>
   );
 }

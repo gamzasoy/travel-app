@@ -1,4 +1,4 @@
-import { EXPENSE_CATEGORIES, PLACE_CATEGORIES } from "../types";
+import { CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "../types";
 
 /** Notion 속성 이름. 노션 화면에 그대로 보이므로 한글 사용. */
 export const P = {
@@ -33,13 +33,21 @@ export const P = {
   participants: "참여자",
   expenseCategory: "분류",
   date: "날짜",
+  // Checklist (분류·순서는 위 이름을 그대로 씀)
+  checked: "체크",
+  // Reservations (일시·메모는 위 이름을 그대로 씀)
+  reservationKind: "종류",
+  confirmation: "예약번호",
+  link: "링크",
 } as const;
 
 export const CURRENCY_OPTIONS = ["JPY", "KRW"] as const;
 export const EXPENSE_CATEGORY_OPTIONS = EXPENSE_CATEGORIES;
 export const PLACE_CATEGORY_OPTIONS = PLACE_CATEGORIES;
+export const CHECKLIST_CATEGORY_OPTIONS = CHECKLIST_CATEGORIES;
+export const RESERVATION_KIND_OPTIONS = RESERVATION_KINDS;
 
-export const DS_KEYS = ["trips", "members", "schedule", "places", "expenses"] as const;
+export const DS_KEYS = ["trips", "members", "schedule", "places", "expenses", "checklist", "reservations"] as const;
 export type DsKey = (typeof DS_KEYS)[number];
 
 /** 데이터 소스 ID를 담는 환경변수 이름 */
@@ -49,4 +57,6 @@ export const DS_ENV: Record<DsKey, string> = {
   schedule: "NOTION_DS_SCHEDULE",
   places: "NOTION_DS_PLACES",
   expenses: "NOTION_DS_EXPENSES",
+  checklist: "NOTION_DS_CHECKLIST",
+  reservations: "NOTION_DS_RESERVATIONS",
 };

@@ -1,18 +1,25 @@
 /**
- * 상위 노션 페이지 아래에 여행 플래너용 데이터베이스 5개를 만든다.
+ * 상위 노션 페이지 아래에 여행 플래너용 데이터베이스 7개를 만든다.
  *
  *   npm run setup:notion -- <상위 페이지 URL 또는 ID>
+ *
+ * 이미 예전 버전(5개)으로 만들어 쓰고 있다면, 새로 생긴 준비물·예약 DB 2개만 추가:
+ *
+ *   npm run setup:notion -- <상위 페이지 URL 또는 ID> --add-prep
+ *   (여행 DB 는 .env.local 의 NOTION_DS_TRIPS 를 사용)
  *
  * NOTION_TOKEN 은 환경변수 또는 .env.local 에서 읽는다.
  * 실행할 때마다 새 DB 를 만들므로, 이미 만들었다면 다시 실행하지 말 것.
  */
 import { Client } from "@notionhq/client";
 import {
+  CHECKLIST_CATEGORY_OPTIONS,
   CURRENCY_OPTIONS,
   DS_ENV,
   EXPENSE_CATEGORY_OPTIONS,
   P,
   PLACE_CATEGORY_OPTIONS,
+  RESERVATION_KIND_OPTIONS,
   type DsKey,
 } from "../src/lib/notion/schema";
 
@@ -23,9 +30,16 @@ try {
 }
 
 const token = process.env.NOTION_TOKEN;
-const parentArg = process.argv[2];
+const args = process.argv.slice(2);
+const addPrepOnly = args.includes("--add-prep");
+const parentArg = args.find((a) => !a.startsWith("--"));
 if (!token || !parentArg) {
-  console.error("사용법: NOTION_TOKEN=... npm run setup:notion -- <상위 페이지 URL 또는 ID>");
+  console.error("사용법: NOTION_TOKEN=... npm run setup:notion -- <상위 페이지 URL 또는 ID> [--add-prep]");
+  process.exit(1);
+}
+const existingTrips = process.env.NOTION_DS_TRIPS;
+if (addPrepOnly && !existingTrips) {
+  console.error("--add-prep 은 .env.local 의 NOTION_DS_TRIPS(기존 여행 DB)가 필요합니다.");
   process.exit(1);
 }
 
@@ -62,8 +76,40 @@ async function createDb(key: DsKey, title: string, properties: Record<string, un
   return ds.id;
 }
 
+/** 준비물·예약 DB (여행 DB 에 관계로 연결) */
+async function createPrepDbs(ids: Partial<Record<DsKey, string>>, tripsId: string) {
+  ids.checklist = await createDb("checklist", "준비물", {
+    [P.title]: { title: {} },
+    [P.trip]: rel(tripsId),
+    [P.checked]: { checkbox: {} },
+    [P.expenseCategory]: opts(CHECKLIST_CATEGORY_OPTIONS),
+    [P.order]: { number: { format: "number" } },
+  });
+
+  ids.reservations = await createDb("reservations", "예약", {
+    [P.title]: { title: {} },
+    [P.trip]: rel(tripsId),
+    [P.reservationKind]: opts(RESERVATION_KIND_OPTIONS),
+    [P.when]: { date: {} },
+    [P.confirmation]: { rich_text: {} },
+    [P.note]: { rich_text: {} },
+    [P.link]: { url: {} },
+  });
+}
+
+function printEnv(ids: Partial<Record<DsKey, string>>) {
+  console.log("\n.env.local 에 아래 값을 붙여넣으세요:\n");
+  for (const key of Object.keys(ids) as DsKey[]) console.log(`${DS_ENV[key]}=${ids[key]}`);
+}
+
 async function main() {
   const ids = {} as Record<DsKey, string>;
+
+  if (addPrepOnly) {
+    await createPrepDbs(ids, existingTrips!);
+    printEnv(ids);
+    return;
+  }
 
   ids.trips = await createDb("trips", "여행", {
     [P.title]: { title: {} },
@@ -130,8 +176,8 @@ async function main() {
     console.warn("! 원화환산 수식 추가 실패(무시 가능):", (e as Error).message);
   }
 
-  console.log("\n.env.local 에 아래 값을 붙여넣으세요:\n");
-  for (const key of Object.keys(ids) as DsKey[]) console.log(`${DS_ENV[key]}=${ids[key]}`);
+  await createPrepDbs(ids, ids.trips);
+  printEnv(ids);
 }
 
 main().catch((e) => {
