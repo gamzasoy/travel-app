@@ -7,7 +7,15 @@ import type { PlaceInput } from "@/actions/places";
 type Picked = Pick<PlaceInput, "name" | "address" | "lat" | "lng" | "googlePlaceId">;
 
 /** Google Places(New) 자동완성. 반드시 <APIProvider> 안에서만 렌더링한다. */
-export function PlaceSearch({ onPick }: { onPick: (p: Picked) => void }) {
+export function PlaceSearch({
+  onPick,
+  placeholder = "🔍 장소 검색 (예: 센소지, 이치란 라멘)",
+  label = "장소 검색",
+}: {
+  onPick: (p: Picked) => void;
+  placeholder?: string;
+  label?: string;
+}) {
   const places = useMapsLibrary("places");
   const [input, setInput] = useState("");
   const [suggestions, setSuggestions] = useState<google.maps.places.AutocompleteSuggestion[]>([]);
@@ -66,10 +74,10 @@ export function PlaceSearch({ onPick }: { onPick: (p: Picked) => void }) {
   return (
     <div className="flex flex-col gap-2">
       <input
-        aria-label="장소 검색"
+        aria-label={label}
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="🔍 장소 검색 (예: 센소지, 이치란 라멘)"
+        placeholder={placeholder}
         className="rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
       />
       {suggestions.length > 0 && (

@@ -1,4 +1,4 @@
-import { hasCoords, type LatLng } from "./map";
+import { hasCoords, type Bounds, type LatLng } from "./map";
 import type { Place } from "./types";
 
 /** 추천 탭에서 고를 수 있는 종류 (장소로 저장할 때 같은 이름의 카테고리가 붙는다) */
@@ -32,9 +32,26 @@ export function centerOf(places: Place[]): LatLng | null {
   };
 }
 
-/** 검색어: "<지역> 맛집" (지역이 비면 키워드만 → 위치 기준 검색) */
-export const recommendQuery = (region: string, kind: RecommendKind): string =>
-  [region.trim(), RECOMMEND_KINDS[kind].query].filter(Boolean).join(" ");
+/** 두 지점 사이 거리 (m, 하버사인) */
+export function distanceM(a: LatLng, b: LatLng): number {
+  const R = 6371000;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(b.lat - a.lat);
+  const dLng = rad(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+/** center 를 둘러싼 반경 radiusM 의 사각 범위 (검색 범위 제한용) */
+export function boundsAround(center: LatLng, radiusM: number): Bounds {
+  const dLat = (radiusM / 6371000) * (180 / Math.PI);
+  const dLng = dLat / Math.max(Math.cos((center.lat * Math.PI) / 180), 1e-6);
+  return { north: center.lat + dLat, south: center.lat - dLat, east: center.lng + dLng, west: center.lng - dLng };
+}
+
+/** center 에서 radiusM 안에 있는 곳만 (좌표 없는 곳은 뺀다) */
+export const withinRadius = <T extends { lat: number | null; lng: number | null }>(list: T[], center: LatLng, radiusM: number): T[] =>
+  list.filter((r) => r.lat !== null && r.lng !== null && distanceM(center, { lat: r.lat, lng: r.lng }) <= radiusM);
 
 /**
  * 구글 평점 순 추천 목록.
