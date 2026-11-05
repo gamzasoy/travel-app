@@ -59,6 +59,32 @@ function RecommendContent({ tripId, days, places }: Props) {
   // 검색해서 고른 기준 장소. 있으면 그 근처(radius 안)에서만 추천한다
   const [anchor, setAnchor] = useState<{ name: string; lat: number; lng: number } | null>(null);
   const [radius, setRadius] = useState<number>(1000);
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
+
+  const locateMe = () => {
+    setLocError(null);
+    if (!("geolocation" in navigator)) {
+      setLocError("이 브라우저는 위치 기능을 지원하지 않아요.");
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setLocating(false);
+        setAnchor({ name: "현재 위치", lat: pos.coords.latitude, lng: pos.coords.longitude });
+      },
+      (err) => {
+        setLocating(false);
+        setLocError(
+          err.code === err.PERMISSION_DENIED
+            ? "위치 권한이 꺼져 있어요. 브라우저(또는 휴대폰) 설정에서 위치 권한을 허용해주세요."
+            : "현재 위치를 가져오지 못했어요. 잠시 후 다시 시도해주세요.",
+        );
+      },
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  };
   const [status, setStatus] = useState<Status>({ state: "loading" });
   const [adding, setAdding] = useState<RankedRecommendation | null>(null);
   // 서버에서 새 장소 목록이 오기 전에도 방금 추가한 곳은 바로 "추가됨" 으로 보여준다
@@ -152,13 +178,28 @@ function RecommendContent({ tripId, days, places }: Props) {
           </div>
         </div>
       ) : (
-        <PlaceSearch
-          label="기준 장소 검색"
-          placeholder="🔍 기준 장소 검색 (예: 센소지, 시부야역)"
-          onPick={(p) => {
-            if (p.lat !== null && p.lng !== null) setAnchor({ name: p.name, lat: p.lat, lng: p.lng });
-          }}
-        />
+        <div className="flex flex-col gap-2">
+          <PlaceSearch
+            label="기준 장소 검색"
+            placeholder="🔍 기준 장소 검색 (예: 센소지, 시부야역)"
+            onPick={(p) => {
+              if (p.lat !== null && p.lng !== null) setAnchor({ name: p.name, lat: p.lat, lng: p.lng });
+            }}
+          />
+          <button
+            type="button"
+            onClick={locateMe}
+            disabled={locating}
+            className="self-start rounded-full border border-border px-3 py-1.5 text-sm active:bg-muted disabled:opacity-50"
+          >
+            {locating ? "위치 확인 중…" : "📍 현재 위치 근처로 찾기"}
+          </button>
+          {locError && (
+            <p role="alert" className="text-xs text-destructive">
+              {locError}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="flex gap-2" role="group" aria-label="추천 종류">
