@@ -12,6 +12,9 @@ const APP_ENV = {
   NOTION_DS_SCHEDULE: "ds-schedule",
   NOTION_DS_PLACES: "ds-places",
   NOTION_DS_EXPENSES: "ds-expenses",
+  NOTION_DS_CHECKLIST: "ds-checklist",
+  NOTION_DS_RESERVATIONS: "ds-reservations",
+  WEATHER_BASE_URL: `http://localhost:${MOCK_PORT}`,
   SESSION_SECRET: "e2e-secret-e2e-secret-e2e-secret",
 };
 

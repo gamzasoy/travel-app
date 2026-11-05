@@ -54,6 +54,19 @@ const store: Record<string, Page[]> = {
     },
   ],
   "ds-schedule": [],
+  "ds-checklist": [],
+  "ds-reservations": [],
+};
+
+/** 가짜 Open-Meteo 예보: 여행 기간(12/1~12/5) 동안 맑음 → 비 … */
+const FORECAST = {
+  daily: {
+    time: ["2026-12-01", "2026-12-02", "2026-12-03", "2026-12-04", "2026-12-05"],
+    weather_code: [0, 63, 3, 2, 0],
+    temperature_2m_max: [13.4, 9.6, 11, 12, 14],
+    temperature_2m_min: [4.2, 5, 3, 2, 4],
+    precipitation_probability_max: [10, 90, 30, 20, 0],
+  },
 };
 
 const trip: Page = {
@@ -101,6 +114,7 @@ http
       const path = (req.url ?? "").split("?")[0];
       let m: RegExpMatchArray | null;
 
+      if (req.method === "GET" && path === "/v1/forecast") return send(res, 200, FORECAST);
       if (req.method === "GET" && (m = path.match(/^\/v1\/pages\/([^/]+)$/))) {
         return m[1] === TRIP_ID ? send(res, 200, trip) : notFound(res);
       }

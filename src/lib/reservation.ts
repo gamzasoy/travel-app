@@ -28,6 +28,15 @@ const localKey = (iso: string): string => {
   return t ? `${d}T${t}` : d;
 };
 
+/** 일시순. 같은 날이면 시간 있는 예약이 먼저, 날짜만 있는 예약은 그 뒤, 일시가 없으면 맨 뒤 */
+export function compareReservations(a: Pick<Reservation, "start" | "title">, b: Pick<Reservation, "start" | "title">): number {
+  const key = (s: string | null) => (s ? (localKey(s).includes("T") ? localKey(s) : `${s}T99`) : "~");
+  const ka = key(a.start);
+  const kb = key(b.start);
+  // localeCompare 는 "~" 를 숫자보다 앞에 두므로 코드값으로 비교
+  return ka < kb ? -1 : ka > kb ? 1 : a.title.localeCompare(b.title);
+}
+
 /**
  * 끝난 예약과 남은 예약으로 나눈다. now 는 여행지 기준 "YYYY-MM-DDTHH:MM".
  * 끝(없으면 시작)이 지났으면 끝난 예약. 날짜만 있으면 그날이 지나야 끝난 것으로 본다.

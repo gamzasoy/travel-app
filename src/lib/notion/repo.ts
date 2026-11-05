@@ -20,6 +20,7 @@ import {
   type NotionPageLike,
 } from "./mappers";
 import { P, type DsKey } from "./schema";
+import { compareReservations } from "@/lib/reservation";
 import type {
   ChecklistItem,
   Expense,
@@ -139,12 +140,7 @@ export async function listChecklist(tripId: string): Promise<ChecklistItem[]> {
 /** 일시순, 일시가 없는 예약은 맨 뒤 */
 export async function listReservations(tripId: string): Promise<Reservation[]> {
   const items = await cachedList<Reservation>("reservations", "reservations", pageToReservation)(tripId);
-  return [...items].sort((a, b) => {
-    if (a.start && b.start) return a.start.localeCompare(b.start);
-    if (a.start) return -1;
-    if (b.start) return 1;
-    return a.title.localeCompare(b.title);
-  });
+  return [...items].sort(compareReservations);
 }
 
 // ---------- 쓰기 (쓰기 후 해당 컬렉션 캐시 무효화) ----------

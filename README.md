@@ -1,6 +1,6 @@
 # 여행 플래너
 
-친구들과 함께 쓰는 여행 일정 · 가계부(N빵 정산, 엔화 지원) · 구글 지도 모바일 PWA.
+친구들과 함께 쓰는 여행 일정(+날씨) · 가계부(N빵 정산, 엔화 지원) · 구글 지도 · 준비물 체크리스트 · 예약 확인 모바일 PWA.
 데이터는 Notion 데이터베이스에 저장됩니다.
 
 ## 개발
@@ -21,7 +21,9 @@ npm run lint && npm run build
 1. https://www.notion.so/profile/integrations 에서 내부 통합을 만들고 토큰을 `.env.local` 의 `NOTION_TOKEN` 에 넣기
 2. 노션에 빈 상위 페이지를 만들고 `···` → 연결 → 만든 통합 추가
 3. `npm run setup:notion -- <상위 페이지 URL>` 실행 → 출력된 `NOTION_DS_*` 값을 `.env.local` 에 붙여넣기
-   (여행/멤버/장소/일정/지출 DB 5개가 생성됩니다. 여러 번 실행하면 DB 가 중복 생성됩니다.)
+   (여행/멤버/장소/일정/지출/준비물/예약 DB 7개가 생성됩니다. 여러 번 실행하면 DB 가 중복 생성됩니다.)
+   - 예전에 5개만 만들어 쓰고 있었다면 `npm run setup:notion -- <상위 페이지 URL> --add-prep` 으로 **준비물·예약 DB 2개만** 추가하고,
+     출력된 `NOTION_DS_CHECKLIST`, `NOTION_DS_RESERVATIONS` 를 `.env.local`(과 Vercel 환경변수)에 넣으세요. 넣기 전까지 준비 탭에는 안내만 보여요.
 4. 여행 DB 에 행 하나를 직접 추가(이름, 기간, PIN)하고, 멤버 DB 에 친구들을 추가한 뒤 `여행` 관계를 연결
 
 ## 친구에게 공유하기
@@ -34,6 +36,12 @@ https://<배포주소>/t/<여행 페이지 ID>
 
 링크로 들어와 PIN 을 입력하고 "나는 누구인가요?"에서 이름을 고르면 30일간 유지됩니다.
 PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 `openssl rand -hex 32` 로 만든 값을 쓰세요.
+
+## 준비 탭 · 날씨
+
+- **준비 탭 → 준비물**: 모두가 함께 쓰는 공용 체크리스트. 비어 있으면 "기본 준비물 넣기"로 일본 여행 기본 목록을 넣을 수 있어요.
+- **준비 탭 → 예약**: 항공권·렌트카·숙소·기차·투어 예약을 일시순으로 보여주고, 예약번호 복사·예약 확인 링크를 바로 열 수 있어요.
+- **일정 탭 날씨**: [Open-Meteo](https://open-meteo.com) 무료 예보(키 필요 없음). 그날 일정에 연결된 장소 → 없으면 `숙소` 분류 장소의 좌표 기준이고, 예보는 약 16일 앞까지만 나와요.
 
 ## 구글 지도 (선택)
 
@@ -50,7 +58,7 @@ PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 
 
 1. GitHub 저장소를 Vercel 에 Import (Framework: Next.js, 기본 설정 그대로)
 2. Environment Variables 등록 — `.env.example` 의 값 전부
-   - `NOTION_TOKEN`, `NOTION_DS_TRIPS|MEMBERS|SCHEDULE|PLACES|EXPENSES`
+   - `NOTION_TOKEN`, `NOTION_DS_TRIPS|MEMBERS|SCHEDULE|PLACES|EXPENSES|CHECKLIST|RESERVATIONS`
    - `SESSION_SECRET` (`openssl rand -hex 32`)
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` (지도를 쓸 때만. `NEXT_PUBLIC_` 값은 **빌드 때** 들어가므로 바꾸면 재배포 필요)
 3. Deploy 후, 구글 API 키의 허용 referrer 에 배포 도메인을 추가
@@ -67,5 +75,5 @@ PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 
 
 | 명령 | 내용 |
 |---|---|
-| `npm test` | 환산·정산·일정·경로·세션·노션 매퍼 단위 테스트 |
-| `npm run test:e2e` | 가짜 노션 서버로 모바일 브라우저 e2e (입장·가계부·일정·지도·PWA 오프라인). 운영 빌드를 한 번 만들어서 1분 정도 걸려요 |
+| `npm test` | 환산·정산·일정·경로·세션·노션 매퍼·준비물·예약·날씨 단위 테스트 |
+| `npm run test:e2e` | 가짜 노션(+날씨) 서버로 모바일 브라우저 e2e (입장·가계부·일정·날씨·지도·준비물·예약·PWA 오프라인). 운영 빌드를 한 번 만들어서 1분 정도 걸려요 |

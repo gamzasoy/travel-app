@@ -36,10 +36,20 @@ test("일정: 추가(시간순 정렬) → 장소 연결 길찾기 → 수정 �
   expect(href.searchParams.get("destination_place_id")).toBe("ChIJ8T1GpMGOGGARDYGSgpooDWw");
   await expect(page.getByText("📍 센소지")).toBeVisible();
 
+  // 날씨: 장소를 연결한 날은 그 장소 기준 예보가 보인다 (가짜 예보: 12/1 맑음 13°/4°)
+  const weather = page.getByRole("region", { name: "날씨" });
+  await expect(weather).toContainText("맑음");
+  await expect(weather).toContainText("13°");
+  await expect(weather).toContainText("기준: 센소지");
+  await expect(page.getByRole("tab", { name: /12\/1/ })).toContainText("☀️ 13°");
+
   // 다른 날 탭은 비어 있고, 탭의 개수 표시가 맞다
   await expect(page.getByRole("tab", { name: /12\/1/ })).toContainText("3개");
   await page.getByRole("tab", { name: /12\/2/ }).click();
   await expect(page.getByText("이 날의 일정이 아직 없어요.")).toBeVisible();
+  // 장소 없는 날(숙소도 없음)은 날씨 대신 안내
+  await expect(page.getByRole("region", { name: "날씨" })).toHaveCount(0);
+  await expect(page.getByText(/날씨는 여행 약 2주 전부터/)).toBeVisible();
   await page.getByRole("tab", { name: /12\/1/ }).click();
 
   // 수정: 점심을 다른 날(12/2) 11:00 으로 옮긴다

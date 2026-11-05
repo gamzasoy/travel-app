@@ -188,7 +188,7 @@ function WeatherCard({ day, today, weather }: { day: string; today: string; weat
           )}
         </p>
         <p className="truncate text-xs text-muted-foreground">
-          {weather.pop !== null && `☔ 강수 ${weather.pop}% · `}📍 {weather.placeName} 기준
+          {weather.pop !== null && `☔ 강수 ${weather.pop}% · `}기준: {weather.placeName}
         </p>
       </div>
     </section>
