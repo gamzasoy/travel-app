@@ -5,19 +5,24 @@ import { useEffect, useMemo, useState } from "react";
 import { DEFAULT_CENTER } from "@/lib/map";
 import {
   RECOMMEND_KINDS,
+  boundsAround,
   centerOf,
   rankRecommendations,
-  recommendQuery,
   savedIds,
+  withinRadius,
   type RankedRecommendation,
   type RecommendKind,
 } from "@/lib/recommend";
 import type { Place } from "@/lib/types";
+import { PlaceSearch } from "../map/PlaceSearch";
 import { AddRecommendSheet } from "./AddRecommendSheet";
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-/** 지역을 입력하지 않았을 때 저장된 장소 중심에서 찾는 반경 (m) */
-const BIAS_RADIUS = 5000;
+/** 기준 장소를 고르지 않았을 때 저장된 장소 중심에서 찾는 반경 (m) */
+const DEFAULT_RADIUS = 5000;
+/** 기준 장소를 골랐을 때 고를 수 있는 반경 (m) */
+const RADII = [500, 1000, 3000] as const;
+const radiusLabel = (m: number) => (m >= 1000 ? `${m / 1000}km` : `${m}m`);
 
 interface Props {
   tripId: string;
@@ -51,8 +56,9 @@ type Status = { state: "loading" } | { state: "error"; message: string } | { sta
 function RecommendContent({ tripId, days, places }: Props) {
   const lib = useMapsLibrary("places");
   const [kind, setKind] = useState<RecommendKind>("맛집");
-  const [input, setInput] = useState("");
-  const [region, setRegion] = useState("");
+  // 검색해서 고른 기준 장소. 있으면 그 근처(radius 안)에서만 추천한다
+  const [anchor, setAnchor] = useState<{ name: string; lat: number; lng: number } | null>(null);
+  const [radius, setRadius] = useState<number>(1000);
   const [status, setStatus] = useState<Status>({ state: "loading" });
   const [adding, setAdding] = useState<RankedRecommendation | null>(null);
   // 서버에서 새 장소 목록이 오기 전에도 방금 추가한 곳은 바로 "추가됨" 으로 보여준다
@@ -67,9 +73,12 @@ function RecommendContent({ tripId, days, places }: Props) {
     return s;
   }, [places, justAdded]);
 
+  const origin = anchor ?? center;
+  const range = anchor ? radius : DEFAULT_RADIUS;
+
   useEffect(() => {
     if (!lib) return;
-    const key = `${kind}|${region}|${region ? "" : `${center.lat.toFixed(3)},${center.lng.toFixed(3)}`}`;
+    const key = `${kind}|${origin.lat.toFixed(4)},${origin.lng.toFixed(4)}|${range}`;
     const hit = cache.get(key);
     if (hit) {
       setStatus({ state: "done", list: hit });
@@ -78,17 +87,18 @@ function RecommendContent({ tripId, days, places }: Props) {
     let cancelled = false;
     setStatus({ state: "loading" });
     lib.Place.searchByText({
-      textQuery: recommendQuery(region, kind),
+      textQuery: RECOMMEND_KINDS[kind].query,
       fields: ["id", "displayName", "formattedAddress", "location", "rating", "userRatingCount", "primaryTypeDisplayName", "googleMapsURI"],
       includedType: RECOMMEND_KINDS[kind].includedType,
       language: "ko",
       maxResultCount: 20,
-      // 지역을 입력했으면 검색어가 위치를 정하고, 아니면 저장된 장소 근처에서 찾는다
-      ...(region ? {} : { locationBias: { center, radius: BIAS_RADIUS } }),
+      // 기준 위치 주변 사각 범위 안에서만 찾고, 아래에서 원형 반경으로 한 번 더 거른다
+      locationRestriction: boundsAround(origin, range),
     })
       .then(({ places: found }) => {
         const list = rankRecommendations(
-          found.map((p) => ({
+          withinRadius(
+            found.map((p) => ({
             googlePlaceId: p.id,
             name: p.displayName ?? "",
             address: p.formattedAddress ?? "",
@@ -98,7 +108,10 @@ function RecommendContent({ tripId, days, places }: Props) {
             reviews: p.userRatingCount ?? null,
             typeLabel: p.primaryTypeDisplayName ?? "",
             mapsUrl: p.googleMapsURI ?? "",
-          })),
+            })),
+            origin,
+            range,
+          ),
         );
         cache.set(key, list);
         if (!cancelled) setStatus({ state: "done", list });
@@ -109,29 +122,44 @@ function RecommendContent({ tripId, days, places }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [lib, kind, region, center]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- origin 은 좌표 값으로 비교한다
+  }, [lib, kind, origin.lat, origin.lng, range]);
 
   return (
     <div className="flex flex-col gap-4">
-      <form
-        className="flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setRegion(input.trim());
-        }}
-      >
-        <input
-          aria-label="추천 지역"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="지역 (예: 시부야, 오사카 난바)"
-          maxLength={50}
-          className="min-w-0 flex-1 rounded-xl border border-border px-4 py-3 outline-none focus:border-primary"
+      {anchor ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-primary bg-primary/10 px-4 py-3">
+            <p className="min-w-0 truncate text-sm">
+              📍 <span className="font-medium">{anchor.name}</span> 근처
+            </p>
+            <button type="button" onClick={() => setAnchor(null)} className="shrink-0 text-xs text-muted-foreground">
+              다시 검색
+            </button>
+          </div>
+          <div className="flex gap-2" role="group" aria-label="반경">
+            {RADII.map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={radius === m}
+                onClick={() => setRadius(m)}
+                className={`rounded-full border px-3 py-1 text-xs ${radius === m ? "border-primary bg-primary/20 text-foreground" : "border-border text-muted-foreground"}`}
+              >
+                {radiusLabel(m)} 이내
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <PlaceSearch
+          label="기준 장소 검색"
+          placeholder="🔍 기준 장소 검색 (예: 센소지, 시부야역)"
+          onPick={(p) => {
+            if (p.lat !== null && p.lng !== null) setAnchor({ name: p.name, lat: p.lat, lng: p.lng });
+          }}
         />
-        <button type="submit" className="shrink-0 rounded-xl bg-primary px-4 font-medium text-primary-foreground active:brightness-95">
-          검색
-        </button>
-      </form>
+      )}
 
       <div className="flex gap-2" role="group" aria-label="추천 종류">
         {(Object.keys(RECOMMEND_KINDS) as RecommendKind[]).map((k) => (
@@ -149,7 +177,7 @@ function RecommendContent({ tripId, days, places }: Props) {
 
       <section>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
-          {region ? `'${region}'` : hasSavedCenter ? "저장한 장소 근처" : "도쿄"} {kind} · 구글 평점순
+          {anchor ? `${anchor.name} ${radiusLabel(radius)} 이내` : hasSavedCenter ? "저장한 장소 근처" : "도쿄"} {kind} · 구글 평점순
         </h2>
         {status.state === "loading" && <p className="p-6 text-center text-sm text-muted-foreground">찾는 중…</p>}
         {status.state === "error" && (
@@ -160,7 +188,7 @@ function RecommendContent({ tripId, days, places }: Props) {
         {status.state === "done" &&
           (status.list.length === 0 ? (
             <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-              추천할 곳을 찾지 못했어요. 다른 지역으로 검색해보세요.
+              근처에서 추천할 곳을 찾지 못했어요. 반경을 넓히거나 다른 장소로 검색해보세요.
             </p>
           ) : (
             <ol className="divide-y divide-border rounded-xl border border-border">

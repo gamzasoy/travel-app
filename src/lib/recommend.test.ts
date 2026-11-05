@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centerOf, rankRecommendations, recommendQuery, savedIds, type Recommendation } from "./recommend";
+import { boundsAround, centerOf, distanceM, rankRecommendations, savedIds, withinRadius, type Recommendation } from "./recommend";
 import type { Place } from "./types";
 
 const place = (id: string, lat: number | null, lng: number | null, googlePlaceId = ""): Place => ({
@@ -36,10 +36,22 @@ describe("centerOf", () => {
   });
 });
 
-describe("recommendQuery", () => {
-  it("지역 + 키워드, 지역이 비면 키워드만", () => {
-    expect(recommendQuery(" 시부야 ", "맛집")).toBe("시부야 맛집");
-    expect(recommendQuery("", "관광")).toBe("관광 명소");
+describe("distanceM / boundsAround / withinRadius", () => {
+  const center = { lat: 35.7148, lng: 139.7967 }; // 센소지
+  it("거리 계산 (위도 0.01도 ≈ 1.1km)", () => {
+    expect(distanceM(center, { lat: center.lat + 0.01, lng: center.lng })).toBeCloseTo(1112, -1);
+    expect(distanceM(center, center)).toBe(0);
+  });
+  it("범위 사각형은 반경만큼 위아래·좌우로 펼쳐진다", () => {
+    const b = boundsAround(center, 1000);
+    expect(distanceM(center, { lat: b.north, lng: center.lng })).toBeCloseTo(1000, -1);
+    expect(distanceM(center, { lat: center.lat, lng: b.east })).toBeCloseTo(1000, -1);
+  });
+  it("반경 밖·좌표 없는 곳은 뺀다", () => {
+    const near = { ...rec("near", 4.5, 100), lat: center.lat + 0.005, lng: center.lng };
+    const far = { ...rec("far", 4.9, 100), lat: center.lat + 0.05, lng: center.lng };
+    const none = { ...rec("none", 4.9, 100), lat: null, lng: null };
+    expect(withinRadius([near, far, none], center, 1500).map((r) => r.googlePlaceId)).toEqual(["near"]);
   });
 });
 
