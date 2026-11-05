@@ -161,3 +161,12 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   await page.getByRole("button", { name: "삭제" }).click();
   await expect(page.getByRole("button", { name: "아침 센소지" })).toHaveCount(0);
 });
+
+// 키 없이 실행되므로 추천 탭은 안내만 보인다 (구글 평점 검색은 브라우저의 Places API 가 필요)
+test("추천: 하단 탭으로 이동하면 키 안내가 보인다", async ({ page }) => {
+  await join(page, "민수");
+  await page.getByRole("link", { name: "추천" }).click();
+  await expect(page).toHaveURL(/\/recommend$/);
+  await expect(page.getByRole("link", { name: "추천" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("추천을 보려면 구글 지도 키가 필요해요")).toBeVisible();
+});
