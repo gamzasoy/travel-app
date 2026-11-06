@@ -1,8 +1,8 @@
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { CopyButton } from "@/components/CopyButton";
 import { fetchLiveRate } from "@/lib/rate";
 import { getTrip } from "@/lib/notion/repo";
+import { inviteUrl, siteOrigin } from "@/lib/site";
 import { RateForm } from "./RateForm";
 
 export default async function SettingsPage({ params }: { params: Promise<{ tripId: string }> }) {
@@ -11,10 +11,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ tripI
   if (!trip) notFound();
   const live = await fetchLiveRate();
 
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "";
-  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
-  const shareUrl = `${proto}://${host}/t/${tripId}`;
+  const shareUrl = inviteUrl(await siteOrigin(), tripId);
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,7 +25,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ tripI
       <section className="flex flex-col gap-2 border-t border-border pt-5">
         <h2 className="text-lg font-bold">친구 초대</h2>
         <p className="text-sm text-muted-foreground">
-          링크를 보내고 <b>PIN</b>도 따로 알려주세요. 링크만으로는 들어올 수 없어요.
+          링크를 보내고 <b>PIN</b>도 따로 알려주세요. 링크만으로는 들어올 수 없어요. 카카오톡에 보내면 미리보기
+          이미지와 여행 이름이 함께 보여요.
         </p>
         <p className="break-all rounded-xl bg-muted p-3 text-xs text-muted-foreground">{shareUrl}</p>
         <div>

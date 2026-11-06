@@ -28,11 +28,15 @@ npm run lint && npm run build
 
 ## 친구에게 공유하기
 
-여행 DB 에서 해당 행을 열어 페이지 URL 끝의 32자리 ID 를 복사하고, 배포 주소 뒤에 붙여 공유합니다.
+앱의 **설정 → 친구 초대 → 링크 복사** 로 링크를 복사해 보내면 됩니다. (직접 만들려면 여행 DB 행의 페이지 URL 끝 32자리 ID 를 사용)
 
 ```
-https://<배포주소>/t/<여행 페이지 ID>
+https://<배포주소>/t/<여행 페이지 ID>/join
 ```
+
+카카오톡 등에 보내면 미리보기 이미지(`public/og.png`)와 "○○ 여행에 초대받았어요 ✈️ · 기간" 이 함께 보여요. PIN 은 미리보기에 들어가지 않아요.
+- 이미지를 바꾸려면 `scripts/make-og.mjs` 를 고친 뒤 `PW_CHROMIUM_PATH=... node scripts/make-og.mjs`
+- 카카오톡은 미리보기를 캐시하므로, 이미 보낸 적 있는 링크는 [카카오 공유 디버거](https://developers.kakao.com/tool/debugger/sharing)에서 URL 을 넣고 **캐시 초기화** 해야 새 미리보기가 보여요.
 
 링크로 들어와 PIN 을 입력하고 "나는 누구인가요?"에서 이름을 고르면 30일간 유지됩니다.
 PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 `openssl rand -hex 32` 로 만든 값을 쓰세요.
@@ -62,7 +66,7 @@ PIN 이 비어 있는 여행은 입장이 거부됩니다. `SESSION_SECRET` 은 
    - `SESSION_SECRET` (`openssl rand -hex 32`)
    - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, `NEXT_PUBLIC_GOOGLE_MAP_ID` (지도를 쓸 때만. `NEXT_PUBLIC_` 값은 **빌드 때** 들어가므로 바꾸면 재배포 필요)
 3. Deploy 후, 구글 API 키의 허용 referrer 에 배포 도메인을 추가
-4. 노션에서 여행 행의 ID 를 복사해 `https://<배포주소>/t/<ID>` 를 친구들에게 공유하고 PIN 을 따로 알려주기
+4. 노션에서 여행 행의 ID 를 복사해 `https://<배포주소>/t/<ID>/join` 를 친구들에게 공유하고 PIN 을 따로 알려주기
    (앱의 **설정 → 친구 초대** 에서 링크를 바로 복사할 수 있어요)
 
 ### 알아두기
