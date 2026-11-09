@@ -177,6 +177,34 @@ describe("settle", () => {
   });
 });
 
+describe("directTransfers", () => {
+  it("지출별로 결제자에게 몫을 보내고 두 사람 사이만 상계한다", () => {
+    const four: Member[] = ["a", "b", "c", "d"].map((id) => ({ id, tripId: "t", name: id, color: null }));
+    const all = ["a", "b", "c", "d"];
+    const r = settle(
+      [
+        exp({ amount: 400000, payerId: "b", participantIds: all }),
+        exp({ amount: 40000, payerId: "d", participantIds: all }),
+      ],
+      four,
+      "KRW",
+      null,
+    );
+    expect(r.directTransfers).toEqual([
+      { from: "a", to: "b", amount: 100000 },
+      { from: "a", to: "d", amount: 10000 },
+      { from: "c", to: "b", amount: 100000 },
+      { from: "c", to: "d", amount: 10000 },
+      { from: "d", to: "b", amount: 90000 },
+    ]);
+    // 각자 최종 금액은 송금 최소화 결과와 같다
+    for (const b of r.balances) {
+      const net = sum(r.directTransfers.map((t) => (t.to === b.memberId ? t.amount : t.from === b.memberId ? -t.amount : 0)));
+      expect(net).toBe(b.balance);
+    }
+  });
+});
+
 describe("minimizeTransfers", () => {
   it("큰 금액끼리 먼저 짝짓는다", () => {
     const t = minimizeTransfers([

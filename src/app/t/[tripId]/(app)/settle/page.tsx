@@ -75,6 +75,27 @@ export default async function SettlePage({
             ))}
           </ul>
         )}
+        {result.transfers.length > 0 && (
+          <details className="mt-2 rounded-xl border border-border text-sm">
+            <summary className="cursor-pointer px-3 py-2 text-muted-foreground">자세히 보기</summary>
+            <div className="border-t border-border px-3 py-2">
+              <p className="mb-2 text-xs text-muted-foreground">
+                지출마다 참여자가 결제한 사람에게 자기 몫을 직접 보낸다고 계산하고, 두 사람이 서로 주고받을 돈만
+                상계했어요. 위 송금은 이 내역을 합쳐 송금 횟수를 줄인 것이라 각자 최종 금액은 같아요.
+              </p>
+              <ul className="divide-y divide-border">
+                {result.directTransfers.map((t) => (
+                  <li key={`${t.from}-${t.to}`} className="flex items-center justify-between py-2">
+                    <span>
+                      {n(t.from)} → {n(t.to)}
+                    </span>
+                    <span>{formatMoney(t.amount, currency)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
+        )}
       </section>
 
       <section>

@@ -23,6 +23,11 @@ export interface SettleResult {
   total: number;
   balances: Balance[];
   transfers: Transfer[];
+  /**
+   * 송금 횟수를 줄이지 않은 직접 정산: 각 지출의 참여자가 결제자에게 자기 몫을 보낸다고 보고,
+   * 두 사람 사이에서 서로 주고받을 돈만 상계한 결과
+   */
+  directTransfers: Transfer[];
   /** 결제자 불명·환율 없음 등으로 계산에서 빠진 지출 id */
   skipped: string[];
 }
@@ -69,6 +74,25 @@ export function minimizeTransfers(balances: Balance[]): Transfer[] {
   return transfers;
 }
 
+/** 두 사람 사이의 채무만 상계한다. 결과는 멤버 순서(from, to)로 정렬 */
+export function netPairwise(debts: Map<string, Map<string, number>>, memberIds: string[]): Transfer[] {
+  const order = new Map(memberIds.map((id, i) => [id, i]));
+  const get = (from: string, to: string) => debts.get(from)?.get(to) ?? 0;
+  const transfers: Transfer[] = [];
+  for (let i = 0; i < memberIds.length; i++) {
+    for (let j = i + 1; j < memberIds.length; j++) {
+      const a = memberIds[i];
+      const b = memberIds[j];
+      const net = get(a, b) - get(b, a);
+      if (net > 0) transfers.push({ from: a, to: b, amount: net });
+      else if (net < 0) transfers.push({ from: b, to: a, amount: -net });
+    }
+  }
+  return transfers.sort(
+    (x, y) => order.get(x.from)! - order.get(y.from)! || order.get(x.to)! - order.get(y.to)!,
+  );
+}
+
 /**
  * @param currency 정산 통화
  * @param fallbackRate 스냅샷이 없는 지출/원→엔 환산에 쓰는 현재 환율(100엔당 원)
@@ -83,6 +107,7 @@ export function settle(
   const known = new Set(memberIds);
   const paid = new Map(memberIds.map((id) => [id, 0]));
   const owed = new Map(memberIds.map((id) => [id, 0]));
+  const debts = new Map<string, Map<string, number>>();
   const skipped: string[] = [];
   let total = 0;
 
@@ -100,6 +125,11 @@ export function settle(
     paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + amount);
     for (const [id, share] of splitAmount(amount, participants, e.payerId)) {
       owed.set(id, (owed.get(id) ?? 0) + share);
+      if (id !== e.payerId && share > 0) {
+        const row = debts.get(id) ?? new Map<string, number>();
+        row.set(e.payerId, (row.get(e.payerId) ?? 0) + share);
+        debts.set(id, row);
+      }
     }
   }
 
@@ -110,5 +140,12 @@ export function settle(
     balance: (paid.get(id) ?? 0) - (owed.get(id) ?? 0),
   }));
 
-  return { currency, total, balances, transfers: minimizeTransfers(balances), skipped };
+  return {
+    currency,
+    total,
+    balances,
+    transfers: minimizeTransfers(balances),
+    directTransfers: netPairwise(debts, memberIds),
+    skipped,
+  };
 }
