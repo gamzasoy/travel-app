@@ -48,7 +48,7 @@ export function ReservationsView({ reservations, now }: { reservations: Reservat
         type="button"
         aria-label="예약 추가"
         onClick={() => setEditing({ mode: "new" })}
-        className="fixed bottom-20 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl text-primary-foreground shadow-lg active:brightness-95"
+        className="absolute bottom-4 right-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-3xl text-primary-foreground shadow-lg active:brightness-95"
       >
         +
       </button>
