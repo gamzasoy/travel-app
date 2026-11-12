@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { requireSession } from "@/lib/auth";
-import { DEFAULT_CHECKLIST, nextChecklistOrder } from "@/lib/checklist";
+import { bagSuggestions, DEFAULT_CHECKLIST, nextChecklistOrder } from "@/lib/checklist";
 import * as repo from "@/lib/notion/repo";
 import { CHECKLIST_BAGS, CHECKLIST_CATEGORIES } from "@/lib/types";
 import type { ActionResult } from "./expenses";
@@ -75,5 +75,14 @@ export async function addDefaultChecklist(): Promise<ActionResult> {
   const { tripId } = await requireSession();
   if ((await repo.listChecklist(tripId)).length > 0) return fail("이미 준비물이 있어요. 새로고침해 주세요.");
   await repo.createChecklistItems(DEFAULT_CHECKLIST.map((d, i) => ({ tripId, ...d, order: i })));
+  return { ok: true };
+}
+
+/** 짐이 비어 있는 준비물에 이름으로 기내/위탁을 채운다 (이미 정한 짐은 그대로) */
+export async function autoAssignBags(): Promise<ActionResult> {
+  const { tripId } = await requireSession();
+  const changes = bagSuggestions(await repo.listChecklist(tripId));
+  if (changes.length === 0) return fail("자동으로 정할 수 있는 준비물이 없어요.");
+  await repo.setChecklistBags(tripId, changes);
   return { ok: true };
 }

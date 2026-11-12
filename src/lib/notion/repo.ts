@@ -22,7 +22,7 @@ import {
 } from "./mappers";
 import { P, type DsKey } from "./schema";
 import { compareReservations } from "@/lib/reservation";
-import { CHECKLIST_BAGS } from "@/lib/types";
+import { CHECKLIST_BAGS, type ChecklistBag } from "@/lib/types";
 import type {
   ChecklistItem,
   Expense,
@@ -241,6 +241,13 @@ export async function updateChecklistItem(id: string, c: NewChecklistItem) {
   await update(id, checklistItemToProperties(c));
   revalidateTag(tag("checklist", c.tripId));
 }
+/** 여러 항목의 짐만 바꾼다 (다른 속성은 건드리지 않음). 노션 속도 제한을 고려해 순서대로 */
+export async function setChecklistBags(tripId: string, changes: { id: string; bag: ChecklistBag | null }[]) {
+  await ensureChecklistProperties();
+  for (const c of changes) await update(c.id, { [P.bag]: { select: c.bag ? { name: c.bag } : null } });
+  revalidateTag(tag("checklist", tripId));
+}
+
 /**
  * 한 사람의 챙김 여부를 바꾼다. 캐시가 아니라 노션에서 방금 읽은 목록을 고쳐 써서,
  * 여러 명이 동시에 눌러도 서로의 체크를 덮어쓰지 않게 한다.

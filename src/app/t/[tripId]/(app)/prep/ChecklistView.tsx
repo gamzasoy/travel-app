@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useOptimistic, useState, useTransition } from "react";
-import { addChecklistItem, addDefaultChecklist, setChecklistPacked } from "@/actions/checklist";
-import { filterByBag, groupChecklist, type BagFilter } from "@/lib/checklist";
+import { addChecklistItem, addDefaultChecklist, autoAssignBags, setChecklistPacked } from "@/actions/checklist";
+import { bagSuggestions, filterByBag, groupChecklist, type BagFilter } from "@/lib/checklist";
 import { safe } from "@/lib/safe-action";
 import {
   CHECKLIST_BAGS,
@@ -76,6 +76,15 @@ export function ChecklistView({
     });
   };
 
+  const autoBagCount = bagSuggestions(optimistic).length;
+  const autoBags = () => {
+    setError(null);
+    startAdd(async () => {
+      const res = await safe(() => autoAssignBags());
+      if (!res.ok) setError(res.error);
+    });
+  };
+
   const addDefaults = () => {
     setError(null);
     startAdd(async () => {
@@ -86,6 +95,20 @@ export function ChecklistView({
 
   return (
     <div className="flex flex-col gap-4">
+      {autoBagCount > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-xl border border-dashed border-border px-3 py-2 text-sm">
+          <span className="text-muted-foreground">짐(기내/위탁)이 안 정해진 준비물이 있어요.</span>
+          <button
+            type="button"
+            onClick={autoBags}
+            disabled={adding}
+            className="shrink-0 rounded-lg bg-primary px-3 py-1 font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {adding ? "정하는 중…" : `자동으로 정하기 (${autoBagCount})`}
+          </button>
+        </div>
+      )}
+
       {optimistic.length > 0 && (
         <div className="flex gap-1.5" role="radiogroup" aria-label="짐 필터">
           {(["전체", ...CHECKLIST_BAGS] as const).map((b) => (

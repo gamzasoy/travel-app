@@ -72,6 +72,27 @@ test("준비물: 기본 목록 넣기 → 추가(기내/위탁) → 짐 필터 �
   await expect(page.getByRole("checkbox", { name: "접이식 우산" })).toHaveCount(0);
 });
 
+test("준비물: 짐이 비어 있는 예전 항목은 '자동으로 정하기'로 기내/위탁을 채운다", async ({ page }) => {
+  await join(page, "민수");
+  await page.getByRole("link", { name: "준비" }).click();
+
+  // 짐 기능 전에 넣었던 것처럼 짐 없이 추가
+  for (const title of ["보조배터리 (기내 반입)", "접이식우산", "물티슈"]) {
+    await page.getByLabel("준비물", { exact: true }).fill(title);
+    await page.getByRole("button", { name: "추가" }).click();
+    await expect(page.getByRole("checkbox", { name: title })).toBeVisible();
+  }
+  const row = (title: string) => page.getByRole("listitem").filter({ has: page.getByRole("checkbox", { name: title }) });
+  await expect(row("보조배터리 (기내 반입)")).not.toContainText("🎒");
+
+  await page.getByRole("button", { name: "자동으로 정하기 (2)" }).click();
+  await expect(page.getByRole("button", { name: /자동으로 정하기/ })).toHaveCount(0);
+  await expect(row("보조배터리 (기내 반입)")).toContainText("🎒 기내");
+  await expect(row("접이식우산")).toContainText("🧳 위탁");
+  await expect(row("물티슈")).not.toContainText("🎒");
+  await expect(row("물티슈")).not.toContainText("🧳");
+});
+
 test("예약: 항공권 추가 → 예약번호·링크 → 숙소 추가(일시순) → 삭제", async ({ page }) => {
   await join(page, "민수");
   await page.goto(page.url().replace(/schedule$/, "prep?view=reservations"));
