@@ -16,7 +16,7 @@ const TABS = [
 export function BottomTabs({ tripId }: { tripId: string }) {
   const pathname = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto flex max-w-md border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
+    <nav className="z-10 flex shrink-0 border-t border-border bg-card pb-[env(safe-area-inset-bottom)]">
       {TABS.map((t) => {
         const href = `/t/${tripId}/${t.href}`;
         const active = pathname.startsWith(href);
