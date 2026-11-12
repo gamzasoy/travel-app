@@ -82,6 +82,9 @@ export interface ChecklistItem {
   category: ChecklistCategory | null;
   /** 기내 반입 / 위탁 수하물. 정하지 않았으면 null */
   bag: ChecklistBag | null;
+  /** 챙긴 사람 (멤버 ID). 각자 자기 짐을 챙기므로 사람마다 따로 체크한다 */
+  packedBy: string[];
+  /** 모두 챙겼는지 (노션 화면용. 앱은 packedBy 로 판단) */
   checked: boolean;
   order: number;
 }
@@ -106,5 +109,5 @@ export interface Reservation {
 export type NewExpense = Omit<Expense, "id">;
 export type NewPlace = Omit<Place, "id">;
 export type NewScheduleItem = Omit<ScheduleItem, "id">;
-export type NewChecklistItem = Omit<ChecklistItem, "id">;
+export type NewChecklistItem = Omit<ChecklistItem, "id" | "packedBy" | "checked">;
 export type NewReservation = Omit<Reservation, "id">;

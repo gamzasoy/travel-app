@@ -31,7 +31,7 @@ export async function addChecklistItem(input: ChecklistInput): Promise<ActionRes
   const parsed = itemInput.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않아요.");
   const existing = await repo.listChecklist(tripId);
-  await repo.createChecklistItem({ tripId, ...parsed.data, checked: false, order: nextChecklistOrder(existing) });
+  await repo.createChecklistItem({ tripId, ...parsed.data, order: nextChecklistOrder(existing) });
   return { ok: true };
 }
 
@@ -41,15 +41,24 @@ export async function editChecklistItem(itemId: string, input: ChecklistInput): 
   if (!current) return fail(NOT_FOUND);
   const parsed = itemInput.safeParse(input);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "입력값이 올바르지 않아요.");
-  await repo.updateChecklistItem(current.id, { ...current, ...parsed.data });
+  await repo.updateChecklistItem(current.id, { tripId, order: current.order, ...parsed.data });
   return { ok: true };
 }
 
-export async function toggleChecklistItem(itemId: string, checked: boolean): Promise<ActionResult> {
+/** 준비물을 누가 챙겼는지 체크/해제. 다른 멤버 대신 눌러줄 수도 있다 */
+export async function setChecklistPacked(itemId: string, memberId: string, packed: boolean): Promise<ActionResult> {
   const { tripId } = await requireSession();
   const current = await findItem(tripId, itemId);
   if (!current) return fail(NOT_FOUND);
-  await repo.setChecklistChecked(current.id, tripId, checked === true);
+  const members = await repo.listMembers(tripId);
+  if (!members.some((m) => m.id === memberId)) return fail("이 여행의 멤버가 아니에요.");
+  await repo.setChecklistPacked(
+    current.id,
+    tripId,
+    memberId,
+    packed === true,
+    members.map((m) => m.id),
+  );
   return { ok: true };
 }
 
@@ -65,8 +74,6 @@ export async function removeChecklistItem(itemId: string): Promise<ActionResult>
 export async function addDefaultChecklist(): Promise<ActionResult> {
   const { tripId } = await requireSession();
   if ((await repo.listChecklist(tripId)).length > 0) return fail("이미 준비물이 있어요. 새로고침해 주세요.");
-  await repo.createChecklistItems(
-    DEFAULT_CHECKLIST.map((d, i) => ({ tripId, ...d, checked: false, order: i })),
-  );
+  await repo.createChecklistItems(DEFAULT_CHECKLIST.map((d, i) => ({ tripId, ...d, order: i })));
   return { ok: true };
 }

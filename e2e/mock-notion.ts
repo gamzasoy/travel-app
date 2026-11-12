@@ -127,7 +127,9 @@ http
 
       if (req.method === "GET" && path === "/v1/forecast") return send(res, 200, FORECAST);
       if (req.method === "GET" && (m = path.match(/^\/v1\/pages\/([^/]+)$/))) {
-        return m[1] === TRIP_ID ? send(res, 200, trip) : notFound(res);
+        if (m[1] === TRIP_ID) return send(res, 200, trip);
+        const found = Object.values(store).flat().find((r) => r.id === m![1]);
+        return found ? send(res, 200, found) : notFound(res);
       }
       if (req.method === "POST" && (m = path.match(/^\/v1\/data_sources\/([^/]+)\/query$/))) {
         const rows = store[m[1]];

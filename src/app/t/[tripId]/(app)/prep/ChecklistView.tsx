@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useOptimistic, useState, useTransition } from "react";
-import { addChecklistItem, addDefaultChecklist, toggleChecklistItem } from "@/actions/checklist";
+import { addChecklistItem, addDefaultChecklist, setChecklistPacked } from "@/actions/checklist";
 import { filterByBag, groupChecklist, type BagFilter } from "@/lib/checklist";
 import { safe } from "@/lib/safe-action";
 import {
@@ -10,13 +10,34 @@ import {
   type ChecklistBag,
   type ChecklistCategory,
   type ChecklistItem,
+  type Member,
 } from "@/lib/types";
 import { BAG_ICON, BagBadge, ChecklistSheet } from "./ChecklistSheet";
 
-export function ChecklistView({ items }: { items: ChecklistItem[] }) {
-  const [optimistic, setChecked] = useOptimistic(items, (state, change: { id: string; checked: boolean }) =>
-    state.map((i) => (i.id === change.id ? { ...i, checked: change.checked } : i)),
+type PackChange = { id: string; memberId: string; packed: boolean };
+
+/** 각자 자기 짐을 챙기므로 체크는 사람마다 따로. 큰 체크박스는 "내가 챙김", 아래 이름 버튼은 멤버별 챙김 */
+export function ChecklistView({
+  items,
+  members,
+  meId,
+}: {
+  items: ChecklistItem[];
+  members: Member[];
+  meId: string | null;
+}) {
+  const [optimistic, setPacked] = useOptimistic(items, (state, c: PackChange) =>
+    state.map((i) =>
+      i.id !== c.id
+        ? i
+        : {
+            ...i,
+            packedBy: c.packed ? [...new Set([...i.packedBy, c.memberId])] : i.packedBy.filter((m) => m !== c.memberId),
+          },
+    ),
   );
+  const mine = (it: ChecklistItem) => !!meId && it.packedBy.includes(meId);
+  const everyone = (it: ChecklistItem) => members.length > 0 && members.every((m) => it.packedBy.includes(m.id));
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<ChecklistCategory | "">("");
   const [bag, setBag] = useState<ChecklistBag | null>(null);
@@ -29,15 +50,17 @@ export function ChecklistView({ items }: { items: ChecklistItem[] }) {
 
   // 진행률·목록 모두 선택한 짐 기준 (기내 가방만 싸는 중일 때 그것만 보이게)
   const inBag = filterByBag(optimistic, bagFilter);
-  const done = inBag.filter((i) => i.checked).length;
-  const visible = hideChecked ? inBag.filter((i) => !i.checked) : inBag;
+  const done = inBag.filter(mine).length;
+  const allDone = inBag.filter(everyone).length;
+  const visible = hideChecked ? inBag.filter((i) => !mine(i)) : inBag;
   const groups = useMemo(() => groupChecklist(visible, CHECKLIST_CATEGORIES), [visible]);
 
-  const toggle = (item: ChecklistItem) => {
+  const toggle = (item: ChecklistItem, memberId: string) => {
+    const packed = !item.packedBy.includes(memberId);
     setError(null);
     startToggle(async () => {
-      setChecked({ id: item.id, checked: !item.checked });
-      const res = await safe(() => toggleChecklistItem(item.id, !item.checked));
+      setPacked({ id: item.id, memberId, packed });
+      const res = await safe(() => setChecklistPacked(item.id, memberId, packed));
       if (!res.ok) setError(res.error); // 실패하면 낙관적 변경은 자동으로 되돌아간다
     });
   };
@@ -85,8 +108,8 @@ export function ChecklistView({ items }: { items: ChecklistItem[] }) {
         <div className="flex flex-col gap-1.5">
           <div className="flex items-baseline justify-between text-sm">
             <span>
-              {bagFilter !== "전체" && `${bagFilter} `}
-              <b>{done}</b> / {inBag.length} 챙김
+              {bagFilter !== "전체" && `${bagFilter} `}내가 <b>{done}</b> / {inBag.length} 챙김
+              {members.length > 1 && <span className="text-xs text-muted-foreground"> · 모두 챙김 {allDone}</span>}
             </span>
             <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <input type="checkbox" checked={hideChecked} onChange={(e) => setHideChecked(e.target.checked)} />
@@ -172,7 +195,7 @@ export function ChecklistView({ items }: { items: ChecklistItem[] }) {
 
       {optimistic.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          <p>아직 준비물이 없어요. 모두가 같은 목록을 함께 체크해요.</p>
+          <p>아직 준비물이 없어요. 모두가 같은 목록을 쓰고, 챙겼는지는 각자 체크해요.</p>
           <button
             type="button"
             onClick={addDefaults}
@@ -188,27 +211,51 @@ export function ChecklistView({ items }: { items: ChecklistItem[] }) {
             <h2 className="mb-1 text-xs font-semibold text-muted-foreground">{g.category}</h2>
             <ul className="flex flex-col divide-y divide-border rounded-xl border border-border">
               {g.items.map((it) => (
-                <li key={it.id} className="flex items-center gap-3 px-3 py-2.5">
-                  <label className="flex min-w-0 flex-1 items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={it.checked}
-                      onChange={() => toggle(it)}
-                      className="h-5 w-5 shrink-0 accent-primary"
-                    />
-                    <span className={`truncate ${it.checked ? "text-muted-foreground line-through" : ""}`}>
-                      {it.title}
-                    </span>
-                  </label>
-                  {it.bag && <BagBadge bag={it.bag} />}
-                  <button
-                    type="button"
-                    aria-label={`${it.title} 수정`}
-                    onClick={() => setEditing(it)}
-                    className="shrink-0 px-1 text-sm text-muted-foreground"
-                  >
-                    ✏️
-                  </button>
+                <li key={it.id} className="flex flex-col gap-1.5 px-3 py-2.5">
+                  <div className="flex items-center gap-3">
+                    <label className="flex min-w-0 flex-1 items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={mine(it)}
+                        disabled={!meId}
+                        onChange={() => meId && toggle(it, meId)}
+                        className="h-5 w-5 shrink-0 accent-primary"
+                      />
+                      <span className={`truncate ${mine(it) ? "text-muted-foreground line-through" : ""}`}>
+                        {it.title}
+                      </span>
+                    </label>
+                    {it.bag && <BagBadge bag={it.bag} />}
+                    <button
+                      type="button"
+                      aria-label={`${it.title} 수정`}
+                      onClick={() => setEditing(it)}
+                      className="shrink-0 px-1 text-sm text-muted-foreground"
+                    >
+                      ✏️
+                    </button>
+                  </div>
+                  {members.length > 1 && (
+                    <div className="flex flex-wrap gap-1 pl-8" aria-label={`${it.title} 챙긴 사람`}>
+                      {members.map((m) => {
+                        const packed = it.packedBy.includes(m.id);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            aria-pressed={packed}
+                            aria-label={`${it.title} ${m.name} 챙김`}
+                            onClick={() => toggle(it, m.id)}
+                            className={`rounded-full border px-2 py-0.5 text-xs ${packed ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"} ${m.id === meId ? "font-semibold" : ""}`}
+                          >
+                            {packed ? "✓ " : ""}
+                            {m.name}
+                          </button>
+                        );
+                      })}
+                      {everyone(it) && <span className="self-center text-xs text-muted-foreground">모두 챙김 🎉</span>}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

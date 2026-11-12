@@ -1,5 +1,7 @@
 import { hasDs } from "@/lib/notion/client";
-import { listChecklist, listReservations } from "@/lib/notion/repo";
+import { cookies } from "next/headers";
+import { listChecklist, listMembers, listReservations } from "@/lib/notion/repo";
+import { SESSION_COOKIE, verifySession } from "@/lib/session";
 import { nowIn } from "@/lib/reservation";
 import { TRIP_TIME_ZONE } from "@/lib/schedule";
 import { PrepView, type PrepTab } from "./PrepView";
@@ -19,9 +21,23 @@ export default async function PrepPage({
   const missing = (["checklist", "reservations"] as const).filter((k) => !hasDs(k));
   if (missing.length > 0) return <SetupNotice />;
 
-  const [checklist, reservations] = await Promise.all([listChecklist(tripId), listReservations(tripId)]);
+  const session = await verifySession((await cookies()).get(SESSION_COOKIE)?.value);
+  const [checklist, reservations, members] = await Promise.all([
+    listChecklist(tripId),
+    listReservations(tripId),
+    listMembers(tripId),
+  ]);
   // 서버에서 정한 현재 시각을 내려줘서 hydration 불일치를 피한다
-  return <PrepView initial={initial} checklist={checklist} reservations={reservations} now={nowIn(TRIP_TIME_ZONE)} />;
+  return (
+    <PrepView
+      initial={initial}
+      checklist={checklist}
+      members={members}
+      meId={session?.memberId ?? null}
+      reservations={reservations}
+      now={nowIn(TRIP_TIME_ZONE)}
+    />
+  );
 }
 
 function SetupNotice() {

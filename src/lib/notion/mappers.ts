@@ -139,6 +139,7 @@ export function pageToChecklistItem(page: NotionPageLike): ChecklistItem {
     title: getTitle(page, P.title),
     category: asOneOf<ChecklistCategory>(getSelect(page, P.expenseCategory), CHECKLIST_CATEGORIES),
     bag: asOneOf<ChecklistBag>(getSelect(page, P.bag), CHECKLIST_BAGS),
+    packedBy: getRelationIds(page, P.packedBy),
     checked: getCheckbox(page, P.checked),
     order: getNumber(page, P.order) ?? 0,
   };
@@ -208,14 +209,22 @@ export function scheduleItemToProperties(s: NewScheduleItem) {
   };
 }
 
+/** 챙긴 사람·체크는 여기서 쓰지 않는다 (수정 화면 저장이 다른 사람이 방금 한 체크를 덮어쓰지 않게). checklistPackedToProperties 로만 쓴다 */
 export function checklistItemToProperties(c: NewChecklistItem) {
   return {
     [P.title]: title(c.title),
     [P.trip]: relation([c.tripId]),
     [P.expenseCategory]: select(c.category),
     [P.bag]: select(c.bag),
-    [P.checked]: { checkbox: c.checked },
     [P.order]: { number: c.order },
+  };
+}
+
+/** 챙긴 사람 목록과, 모두 챙겼는지(체크) */
+export function checklistPackedToProperties(packedBy: string[], memberIds: string[]) {
+  return {
+    [P.packedBy]: relation(packedBy),
+    [P.checked]: { checkbox: memberIds.length > 0 && memberIds.every((id) => packedBy.includes(id)) },
   };
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   checklistItemToProperties,
+  checklistPackedToProperties,
   expenseToProperties,
   pageToChecklistItem,
   pageToExpense,
@@ -205,22 +206,33 @@ describe("체크리스트", () => {
         [P.trip]: rel("t1"),
         [P.expenseCategory]: { select: { name: "서류" } },
         [P.bag]: { select: { name: "기내" } },
+        [P.packedBy]: rel("m1", "m2"),
         [P.checked]: { checkbox: true },
         [P.order]: { number: 3 },
       },
     });
-    expect(item).toEqual({ id: "c1", tripId: "t1", title: "여권", category: "서류", bag: "기내", checked: true, order: 3 });
+    expect(item).toEqual({ id: "c1", tripId: "t1", title: "여권", category: "서류", bag: "기내", packedBy: ["m1", "m2"], checked: true, order: 3 });
 
-    const props = checklistItemToProperties({ ...item, category: null, checked: false }) as Props;
+    const props = checklistItemToProperties({ ...item, category: null }) as Props;
     expect(props[P.title]).toEqual({ title: [{ text: { content: "여권" } }] });
-    expect(props[P.checked]).toEqual({ checkbox: false });
     expect(props[P.expenseCategory]).toEqual({ select: null });
     expect(props[P.bag]).toEqual({ select: { name: "기내" } });
+    expect(props).not.toHaveProperty(P.packedBy);
+    expect(props).not.toHaveProperty(P.checked);
+  });
+
+  it("챙긴 사람 → 체크는 모두 챙겼을 때만", () => {
+    expect(checklistPackedToProperties(["m1"], ["m1", "m2"])).toEqual({
+      [P.packedBy]: { relation: [{ id: "m1" }] },
+      [P.checked]: { checkbox: false },
+    });
+    expect(checklistPackedToProperties(["m2", "m1"], ["m1", "m2"])[P.checked]).toEqual({ checkbox: true });
+    expect(checklistPackedToProperties([], [])[P.checked]).toEqual({ checkbox: false });
   });
 
   it("모르는 분류·빈 값은 기본값", () => {
     const item = pageToChecklistItem({ id: "c2", properties: { [P.expenseCategory]: { select: { name: "식비" } } } });
-    expect(item).toMatchObject({ title: "", category: null, bag: null, checked: false, order: 0 });
+    expect(item).toMatchObject({ title: "", category: null, bag: null, packedBy: [], checked: false, order: 0 });
   });
 });
 

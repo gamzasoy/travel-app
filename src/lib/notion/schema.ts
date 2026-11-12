@@ -36,6 +36,7 @@ export const P = {
   // Checklist (분류·순서는 위 이름을 그대로 씀)
   checked: "체크",
   bag: "짐",
+  packedBy: "챙긴 사람",
   // Reservations (일시·메모는 위 이름을 그대로 씀)
   reservationKind: "종류",
   confirmation: "예약번호",

@@ -4,6 +4,7 @@ import { revalidateTag, unstable_cache } from "next/cache";
 import { dsId, notion } from "./client";
 import {
   checklistItemToProperties,
+  checklistPackedToProperties,
   expenseToProperties,
   memberToProperties,
   pageToChecklistItem,
@@ -201,44 +202,61 @@ export async function deleteScheduleItem(id: string, tripId: string) {
 }
 
 /**
- * "짐"(기내/위탁) 속성은 나중에 추가됐으므로, 예전에 만든 준비물 DB 에는 없을 수 있다.
- * 쓰기 전에 한 번 확인해서 없으면 만든다 (서버 프로세스당 한 번).
+ * "짐"(기내/위탁)·"챙긴 사람" 속성은 나중에 추가됐으므로, 예전에 만든 준비물 DB 에는 없을 수 있다.
+ * 쓰기 전에 한 번 확인해서 없는 것만 만든다 (서버 프로세스당 한 번).
  */
-let bagReady: Promise<void> | null = null;
-function ensureBagProperty(): Promise<void> {
-  bagReady ??= (async () => {
-    const ds = (await notion().dataSources.retrieve({ data_source_id: dsId("checklist") })) as { properties?: Record<string, unknown> };
-    if (ds.properties && P.bag in ds.properties) return;
-    await notion().dataSources.update({
-      data_source_id: dsId("checklist"),
-      properties: { [P.bag]: { select: { options: CHECKLIST_BAGS.map((name) => ({ name })) } } } as never,
-    });
+let checklistReady: Promise<void> | null = null;
+function ensureChecklistProperties(): Promise<void> {
+  checklistReady ??= (async () => {
+    const ds = (await notion().dataSources.retrieve({ data_source_id: dsId("checklist") })) as {
+      properties?: Record<string, unknown>;
+    };
+    const has = (name: string) => !!ds.properties && name in ds.properties;
+    const add: Record<string, unknown> = {};
+    if (!has(P.bag)) add[P.bag] = { select: { options: CHECKLIST_BAGS.map((name) => ({ name })) } };
+    if (!has(P.packedBy)) add[P.packedBy] = { relation: { data_source_id: dsId("members"), single_property: {} } };
+    if (Object.keys(add).length === 0) return;
+    await notion().dataSources.update({ data_source_id: dsId("checklist"), properties: add as never });
   })().catch((e) => {
-    bagReady = null; // 실패하면 다음 쓰기에서 다시 시도
+    checklistReady = null; // 실패하면 다음 쓰기에서 다시 시도
     throw e;
   });
-  return bagReady;
+  return checklistReady;
 }
 
 export async function createChecklistItem(c: NewChecklistItem) {
-  await ensureBagProperty();
+  await ensureChecklistProperties();
   const id = await create("checklist", checklistItemToProperties(c));
   revalidateTag(tag("checklist", c.tripId));
   return id;
 }
 /** 여러 개를 한 번에 추가 (기본 준비물). 노션 속도 제한을 고려해 순서대로 만든다. */
 export async function createChecklistItems(items: NewChecklistItem[]) {
-  await ensureBagProperty();
+  await ensureChecklistProperties();
   for (const c of items) await create("checklist", checklistItemToProperties(c));
   if (items[0]) revalidateTag(tag("checklist", items[0].tripId));
 }
 export async function updateChecklistItem(id: string, c: NewChecklistItem) {
-  await ensureBagProperty();
+  await ensureChecklistProperties();
   await update(id, checklistItemToProperties(c));
   revalidateTag(tag("checklist", c.tripId));
 }
-export async function setChecklistChecked(id: string, tripId: string, checked: boolean) {
-  await update(id, { [P.checked]: { checkbox: checked } });
+/**
+ * 한 사람의 챙김 여부를 바꾼다. 캐시가 아니라 노션에서 방금 읽은 목록을 고쳐 써서,
+ * 여러 명이 동시에 눌러도 서로의 체크를 덮어쓰지 않게 한다.
+ */
+export async function setChecklistPacked(
+  id: string,
+  tripId: string,
+  memberId: string,
+  packed: boolean,
+  memberIds: string[],
+) {
+  await ensureChecklistProperties();
+  const page = await notion().pages.retrieve({ page_id: id });
+  const current = isFullPage(page) ? pageToChecklistItem(page).packedBy : [];
+  const next = packed ? [...new Set([...current, memberId])] : current.filter((m) => m !== memberId);
+  await update(id, checklistPackedToProperties(next, memberIds));
   revalidateTag(tag("checklist", tripId));
 }
 export async function deleteChecklistItem(id: string, tripId: string) {
