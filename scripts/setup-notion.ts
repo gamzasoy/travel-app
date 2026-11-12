@@ -6,13 +6,14 @@
  * 이미 예전 버전(5개)으로 만들어 쓰고 있다면, 새로 생긴 준비물·예약 DB 2개만 추가:
  *
  *   npm run setup:notion -- <상위 페이지 URL 또는 ID> --add-prep
- *   (여행 DB 는 .env.local 의 NOTION_DS_TRIPS 를 사용)
+ *   (여행·멤버 DB 는 .env.local 의 NOTION_DS_TRIPS, NOTION_DS_MEMBERS 를 사용)
  *
  * NOTION_TOKEN 은 환경변수 또는 .env.local 에서 읽는다.
  * 실행할 때마다 새 DB 를 만들므로, 이미 만들었다면 다시 실행하지 말 것.
  */
 import { Client } from "@notionhq/client";
 import {
+  CHECKLIST_BAG_OPTIONS,
   CHECKLIST_CATEGORY_OPTIONS,
   CURRENCY_OPTIONS,
   DS_ENV,
@@ -38,8 +39,9 @@ if (!token || !parentArg) {
   process.exit(1);
 }
 const existingTrips = process.env.NOTION_DS_TRIPS;
-if (addPrepOnly && !existingTrips) {
-  console.error("--add-prep 은 .env.local 의 NOTION_DS_TRIPS(기존 여행 DB)가 필요합니다.");
+const existingMembers = process.env.NOTION_DS_MEMBERS;
+if (addPrepOnly && (!existingTrips || !existingMembers)) {
+  console.error("--add-prep 은 .env.local 의 NOTION_DS_TRIPS, NOTION_DS_MEMBERS(기존 여행·멤버 DB)가 필요합니다.");
   process.exit(1);
 }
 
@@ -77,12 +79,14 @@ async function createDb(key: DsKey, title: string, properties: Record<string, un
 }
 
 /** 준비물·예약 DB (여행 DB 에 관계로 연결) */
-async function createPrepDbs(ids: Partial<Record<DsKey, string>>, tripsId: string) {
+async function createPrepDbs(ids: Partial<Record<DsKey, string>>, tripsId: string, membersId: string) {
   ids.checklist = await createDb("checklist", "준비물", {
     [P.title]: { title: {} },
     [P.trip]: rel(tripsId),
     [P.checked]: { checkbox: {} },
     [P.expenseCategory]: opts(CHECKLIST_CATEGORY_OPTIONS),
+    [P.bag]: opts(CHECKLIST_BAG_OPTIONS),
+    [P.packedBy]: rel(membersId),
     [P.order]: { number: { format: "number" } },
   });
 
@@ -106,7 +110,7 @@ async function main() {
   const ids = {} as Record<DsKey, string>;
 
   if (addPrepOnly) {
-    await createPrepDbs(ids, existingTrips!);
+    await createPrepDbs(ids, existingTrips!, existingMembers!);
     printEnv(ids);
     return;
   }
@@ -176,7 +180,7 @@ async function main() {
     console.warn("! 원화환산 수식 추가 실패(무시 가능):", (e as Error).message);
   }
 
-  await createPrepDbs(ids, ids.trips);
+  await createPrepDbs(ids, ids.trips, ids.members);
   printEnv(ids);
 }
 

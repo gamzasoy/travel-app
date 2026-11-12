@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ChecklistItem, Reservation } from "@/lib/types";
+import type { ChecklistItem, Member, Reservation } from "@/lib/types";
 import { ChecklistView } from "./ChecklistView";
 import { ReservationsView } from "./ReservationsView";
 
@@ -15,11 +15,13 @@ const TABS: { key: PrepTab; label: string }[] = [
 interface Props {
   initial: PrepTab;
   checklist: ChecklistItem[];
+  members: Member[];
+  meId: string | null;
   reservations: Reservation[];
   now: string;
 }
 
-export function PrepView({ initial, checklist, reservations, now }: Props) {
+export function PrepView({ initial, checklist, members, meId, reservations, now }: Props) {
   const [tab, setTab] = useState<PrepTab>(initial);
 
   const select = (next: PrepTab) => {
@@ -47,7 +49,7 @@ export function PrepView({ initial, checklist, reservations, now }: Props) {
           </button>
         ))}
       </div>
-      {tab === "checklist" ? <ChecklistView items={checklist} /> : <ReservationsView reservations={reservations} now={now} />}
+      {tab === "checklist" ? <ChecklistView items={checklist} members={members} meId={meId} /> : <ReservationsView reservations={reservations} now={now} />}
     </div>
   );
 }

@@ -58,6 +58,11 @@ const store: Record<string, Page[]> = {
   "ds-reservations": [],
 };
 
+/** 데이터 소스 스키마 (속성 목록). 준비물 DB 는 "짐" 없이 시작 */
+const dsProps: Record<string, Record<string, unknown>> = {
+  "ds-checklist": { [P.title]: {}, [P.trip]: {}, [P.checked]: {}, [P.expenseCategory]: {}, [P.order]: {} },
+};
+
 /** 가짜 Open-Meteo 예보: 여행 기간(12/1~12/5) 동안 맑음 → 비 … */
 const FORECAST = {
   daily: {
@@ -97,6 +102,12 @@ function toResponseProps(req: Record<string, PropReq>): Record<string, unknown> 
   return out;
 }
 
+/** 실제 노션처럼, 스키마에 없는 속성을 쓰면 validation_error */
+const unknownProp = (ds: string, props: Record<string, unknown> | undefined) =>
+  dsProps[ds] ? Object.keys(props ?? {}).find((k) => !(k in dsProps[ds])) : undefined;
+const invalid = (res: http.ServerResponse, prop: string) =>
+  send(res, 400, { object: "error", status: 400, code: "validation_error", message: `${prop} is not a property that exists.` });
+
 let seq = 0;
 const send = (res: http.ServerResponse, code: number, body: unknown) => {
   res.writeHead(code, { "content-type": "application/json" });
@@ -116,7 +127,9 @@ http
 
       if (req.method === "GET" && path === "/v1/forecast") return send(res, 200, FORECAST);
       if (req.method === "GET" && (m = path.match(/^\/v1\/pages\/([^/]+)$/))) {
-        return m[1] === TRIP_ID ? send(res, 200, trip) : notFound(res);
+        if (m[1] === TRIP_ID) return send(res, 200, trip);
+        const found = Object.values(store).flat().find((r) => r.id === m![1]);
+        return found ? send(res, 200, found) : notFound(res);
       }
       if (req.method === "POST" && (m = path.match(/^\/v1\/data_sources\/([^/]+)\/query$/))) {
         const rows = store[m[1]];
@@ -125,17 +138,30 @@ http
         const results = rows.filter((r) => !want || (r.properties[P.trip] as RelProp)?.relation?.some((x) => x.id === want));
         return send(res, 200, { object: "list", results, has_more: false, next_cursor: null });
       }
+      // 예전 준비물 DB 처럼 "짐" 속성이 없는 상태에서 시작 → 앱이 처음 쓸 때 추가한다
+      if (req.method === "GET" && (m = path.match(/^\/v1\/data_sources\/([^/]+)$/))) {
+        if (!store[m[1]]) return notFound(res);
+        return send(res, 200, { object: "data_source", id: m[1], properties: dsProps[m[1]] ?? {} });
+      }
+      if (req.method === "PATCH" && (m = path.match(/^\/v1\/data_sources\/([^/]+)$/))) {
+        if (!store[m[1]]) return notFound(res);
+        dsProps[m[1]] = { ...dsProps[m[1]], ...body.properties };
+        return send(res, 200, { object: "data_source", id: m[1], properties: dsProps[m[1]] });
+      }
       if (req.method === "POST" && path === "/v1/pages") {
         const ds = body.parent?.data_source_id as string;
         if (!store[ds]) return notFound(res);
+        if (unknownProp(ds, body.properties)) return invalid(res, unknownProp(ds, body.properties)!);
         const page: Page = { object: "page", id: `page-${ds}-${String(++seq).padStart(6, "0")}`, properties: toResponseProps(body.properties) };
         store[ds].push(page);
         return send(res, 200, page);
       }
       if (req.method === "PATCH" && (m = path.match(/^\/v1\/pages\/([^/]+)$/))) {
-        for (const rows of Object.values(store)) {
+        for (const [ds, rows] of Object.entries(store)) {
           const i = rows.findIndex((r) => r.id === m![1]);
           if (i < 0) continue;
+          const bad = unknownProp(ds, body.properties);
+          if (bad) return invalid(res, bad);
           if (body.in_trash) rows.splice(i, 1);
           else rows[i].properties = { ...rows[i].properties, ...toResponseProps(body.properties ?? {}) };
           return send(res, 200, rows[i] ?? { object: "page", id: m[1] });

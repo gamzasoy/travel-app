@@ -3,11 +3,31 @@
 import { useState, useTransition } from "react";
 import { editChecklistItem, removeChecklistItem } from "@/actions/checklist";
 import { safe } from "@/lib/safe-action";
-import { CHECKLIST_CATEGORIES, type ChecklistCategory, type ChecklistItem } from "@/lib/types";
+import {
+  CHECKLIST_BAGS,
+  CHECKLIST_CATEGORIES,
+  type ChecklistBag,
+  type ChecklistCategory,
+  type ChecklistItem,
+} from "@/lib/types";
+
+export const BAG_ICON: Record<ChecklistBag, string> = { 기내: "🎒", 위탁: "🧳" };
+
+/** 목록에서 항목 옆에 붙는 짐 표시 */
+export function BagBadge({ bag }: { bag: ChecklistBag }) {
+  return (
+    <span
+      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${bag === "기내" ? "bg-primary/25 text-foreground" : "bg-muted text-muted-foreground"}`}
+    >
+      {BAG_ICON[bag]} {bag}
+    </span>
+  );
+}
 
 export function ChecklistSheet({ item, onClose }: { item: ChecklistItem; onClose: () => void }) {
   const [title, setTitle] = useState(item.title);
   const [category, setCategory] = useState<ChecklistCategory | "">(item.category ?? "");
+  const [bag, setBag] = useState<ChecklistBag | null>(item.bag);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -15,7 +35,7 @@ export function ChecklistSheet({ item, onClose }: { item: ChecklistItem; onClose
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const res = await safe(() => editChecklistItem(item.id, { title, category: category || null }));
+      const res = await safe(() => editChecklistItem(item.id, { title, category: category || null, bag }));
       if (res.ok) onClose();
       else setError(res.error);
     });
@@ -61,6 +81,21 @@ export function ChecklistSheet({ item, onClose }: { item: ChecklistItem; onClose
               className={`rounded-full border px-3 py-1 text-sm ${category === c ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
             >
               {c}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="짐">
+          <span className="text-sm text-muted-foreground">짐</span>
+          {CHECKLIST_BAGS.map((b) => (
+            <button
+              key={b}
+              type="button"
+              role="radio"
+              aria-checked={bag === b}
+              onClick={() => setBag(bag === b ? null : b)}
+              className={`rounded-full border px-3 py-1 text-sm ${bag === b ? "border-primary bg-primary text-primary-foreground" : "border-border text-muted-foreground"}`}
+            >
+              {BAG_ICON[b]} {b}
             </button>
           ))}
         </div>
