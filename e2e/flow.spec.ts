@@ -36,9 +36,17 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
 
   // 정산: 27,000원을 3명이 9,000원씩, 지은·현우 → 민수
   await page.getByRole("link", { name: "정산" }).click();
-  await expect(page.getByText("지은 → 민수")).toBeVisible();
-  await expect(page.getByText("현우 → 민수")).toBeVisible();
-  await expect(page.getByText("₩9,000").first()).toBeVisible();
+  const transfers = page.getByRole("list", { name: "송금" });
+  await expect(transfers.getByRole("listitem")).toHaveCount(2);
+  await expect(transfers.getByRole("listitem").filter({ hasText: "지은 → 민수" })).toContainText("₩9,000");
+  await expect(transfers.getByRole("listitem").filter({ hasText: "현우 → 민수" })).toContainText("₩9,000");
+
+  // 자세히 보기: 접혀 있다가 열면 직접 정산 내역 (지출 하나라 송금과 같다)
+  const direct = page.getByRole("list", { name: "직접 정산 내역" });
+  await expect(direct).toBeHidden();
+  await page.getByText("자세히 보기").click();
+  await expect(direct.getByRole("listitem").filter({ hasText: "지은 → 민수" })).toContainText("₩9,000");
+  await expect(direct.getByRole("listitem").filter({ hasText: "현우 → 민수" })).toContainText("₩9,000");
 
   // 엔화로 보기
   await page.getByRole("link", { name: "¥ 엔" }).click();

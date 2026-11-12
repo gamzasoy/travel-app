@@ -64,7 +64,7 @@ export default async function SettlePage({
             {expenses.length === 0 ? "아직 지출이 없어요." : "정산할 금액이 없어요 🎉"}
           </p>
         ) : (
-          <ul className="divide-y divide-border rounded-xl border border-border">
+          <ul aria-label="송금" className="divide-y divide-border rounded-xl border border-border">
             {result.transfers.map((t) => (
               <li key={`${t.from}-${t.to}`} className="flex items-center justify-between px-3 py-3">
                 <span>
@@ -83,7 +83,7 @@ export default async function SettlePage({
                 지출마다 참여자가 결제한 사람에게 자기 몫을 직접 보낸다고 계산하고, 두 사람이 서로 주고받을 돈만
                 상계했어요. 위 송금은 이 내역을 합쳐 송금 횟수를 줄인 것이라 각자 최종 금액은 같아요.
               </p>
-              <ul className="divide-y divide-border">
+              <ul aria-label="직접 정산 내역" className="divide-y divide-border">
                 {result.directTransfers.map((t) => (
                   <li key={`${t.from}-${t.to}`} className="flex items-center justify-between py-2">
                     <span>
