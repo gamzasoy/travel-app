@@ -1,6 +1,7 @@
 import { TRIP_TIME_ZONE } from "../schedule";
 import { P } from "./schema";
 import type {
+  ChecklistBag,
   ChecklistCategory,
   ChecklistItem,
   Currency,
@@ -19,7 +20,7 @@ import type {
   ScheduleItem,
   Trip,
 } from "@/lib/types";
-import { CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "@/lib/types";
+import { CHECKLIST_BAGS, CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "@/lib/types";
 
 /** 매퍼가 필요로 하는 최소한의 Notion 페이지 모양 */
 export interface NotionPageLike {
@@ -137,6 +138,7 @@ export function pageToChecklistItem(page: NotionPageLike): ChecklistItem {
     tripId: getRelationIds(page, P.trip)[0] ?? "",
     title: getTitle(page, P.title),
     category: asOneOf<ChecklistCategory>(getSelect(page, P.expenseCategory), CHECKLIST_CATEGORIES),
+    bag: asOneOf<ChecklistBag>(getSelect(page, P.bag), CHECKLIST_BAGS),
     checked: getCheckbox(page, P.checked),
     order: getNumber(page, P.order) ?? 0,
   };
@@ -211,6 +213,7 @@ export function checklistItemToProperties(c: NewChecklistItem) {
     [P.title]: title(c.title),
     [P.trip]: relation([c.tripId]),
     [P.expenseCategory]: select(c.category),
+    [P.bag]: select(c.bag),
     [P.checked]: { checkbox: c.checked },
     [P.order]: { number: c.order },
   };

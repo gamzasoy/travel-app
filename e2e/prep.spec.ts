@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { join } from "./helpers";
 
-test("준비물: 기본 목록 넣기 → 추가 → 체크(새로고침 후 유지) → 수정·삭제", async ({ page }) => {
+test("준비물: 기본 목록 넣기 → 추가(기내/위탁) → 짐 필터 → 체크(새로고침 후 유지) → 수정·삭제", async ({ page }) => {
   await join(page, "지은");
   await page.getByRole("link", { name: "준비" }).click();
   await expect(page.getByRole("tab", { name: /준비물/, selected: true })).toBeVisible();
@@ -11,11 +11,24 @@ test("준비물: 기본 목록 넣기 → 추가 → 체크(새로고침 후 유
   const total = await page.getByRole("checkbox", { name: /./ }).count(); // "챙긴 것 숨기기" 포함
   expect(total).toBeGreaterThan(10);
 
-  // 직접 추가 (분류 선택)
+  // 직접 추가 (분류·짐 선택)
   await page.getByLabel("준비물", { exact: true }).fill("우산");
   await page.getByLabel("분류", { exact: true }).selectOption("기타");
+  await page.getByRole("radiogroup", { name: "추가할 짐" }).getByRole("radio", { name: /위탁/ }).click();
   await page.getByRole("button", { name: "추가" }).click();
   await expect(page.getByRole("checkbox", { name: "우산" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "우산" })).toContainText("위탁");
+
+  // 짐 필터: 기내만 보면 보조배터리는 있고 우산(위탁)은 없다. 진행률도 기내 기준
+  const bagFilter = page.getByRole("radiogroup", { name: "짐 필터" });
+  await bagFilter.getByRole("radio", { name: /기내/ }).click();
+  await expect(page.getByRole("checkbox", { name: "보조배터리" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "우산" })).toHaveCount(0);
+  await expect(page.getByText(/^기내 0 \/ \d+ 챙김$/)).toBeVisible();
+  await bagFilter.getByRole("radio", { name: /위탁/ }).click();
+  await expect(page.getByRole("checkbox", { name: "우산" })).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "보조배터리" })).toHaveCount(0);
+  await bagFilter.getByRole("radio", { name: /전체/ }).click();
 
   // 체크 → 진행률, 새로고침 후에도 유지 (노션에 저장됨)
   await page.getByRole("checkbox", { name: "여권" }).check();
@@ -31,8 +44,10 @@ test("준비물: 기본 목록 넣기 → 추가 → 체크(새로고침 후 유
   // 수정 → 삭제
   await page.getByRole("button", { name: "우산 수정" }).click();
   await page.getByLabel("이름").fill("접이식 우산");
+  await page.getByRole("radiogroup", { name: "짐", exact: true }).getByRole("radio", { name: /기내/ }).click();
   await page.getByRole("button", { name: "저장" }).click();
   await expect(page.getByRole("checkbox", { name: "접이식 우산" })).toBeVisible();
+  await expect(page.getByRole("listitem").filter({ hasText: "접이식 우산" })).toContainText("기내");
   await page.getByRole("button", { name: "접이식 우산 수정" }).click();
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "삭제" }).click();

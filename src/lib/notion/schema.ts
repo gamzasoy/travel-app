@@ -1,4 +1,4 @@
-import { CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "../types";
+import { CHECKLIST_BAGS, CHECKLIST_CATEGORIES, EXPENSE_CATEGORIES, PLACE_CATEGORIES, RESERVATION_KINDS } from "../types";
 
 /** Notion 속성 이름. 노션 화면에 그대로 보이므로 한글 사용. */
 export const P = {
@@ -35,6 +35,7 @@ export const P = {
   date: "날짜",
   // Checklist (분류·순서는 위 이름을 그대로 씀)
   checked: "체크",
+  bag: "짐",
   // Reservations (일시·메모는 위 이름을 그대로 씀)
   reservationKind: "종류",
   confirmation: "예약번호",
@@ -45,6 +46,7 @@ export const CURRENCY_OPTIONS = ["JPY", "KRW"] as const;
 export const EXPENSE_CATEGORY_OPTIONS = EXPENSE_CATEGORIES;
 export const PLACE_CATEGORY_OPTIONS = PLACE_CATEGORIES;
 export const CHECKLIST_CATEGORY_OPTIONS = CHECKLIST_CATEGORIES;
+export const CHECKLIST_BAG_OPTIONS = CHECKLIST_BAGS;
 export const RESERVATION_KIND_OPTIONS = RESERVATION_KINDS;
 
 export const DS_KEYS = ["trips", "members", "schedule", "places", "expenses", "checklist", "reservations"] as const;

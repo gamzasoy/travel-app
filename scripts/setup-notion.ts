@@ -13,6 +13,7 @@
  */
 import { Client } from "@notionhq/client";
 import {
+  CHECKLIST_BAG_OPTIONS,
   CHECKLIST_CATEGORY_OPTIONS,
   CURRENCY_OPTIONS,
   DS_ENV,
@@ -83,6 +84,7 @@ async function createPrepDbs(ids: Partial<Record<DsKey, string>>, tripsId: strin
     [P.trip]: rel(tripsId),
     [P.checked]: { checkbox: {} },
     [P.expenseCategory]: opts(CHECKLIST_CATEGORY_OPTIONS),
+    [P.bag]: opts(CHECKLIST_BAG_OPTIONS),
     [P.order]: { number: { format: "number" } },
   });
 

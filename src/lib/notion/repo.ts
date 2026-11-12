@@ -21,6 +21,7 @@ import {
 } from "./mappers";
 import { P, type DsKey } from "./schema";
 import { compareReservations } from "@/lib/reservation";
+import { CHECKLIST_BAGS } from "@/lib/types";
 import type {
   ChecklistItem,
   Expense,
@@ -199,17 +200,40 @@ export async function deleteScheduleItem(id: string, tripId: string) {
   revalidateTag(tag("schedule", tripId));
 }
 
+/**
+ * "짐"(기내/위탁) 속성은 나중에 추가됐으므로, 예전에 만든 준비물 DB 에는 없을 수 있다.
+ * 쓰기 전에 한 번 확인해서 없으면 만든다 (서버 프로세스당 한 번).
+ */
+let bagReady: Promise<void> | null = null;
+function ensureBagProperty(): Promise<void> {
+  bagReady ??= (async () => {
+    const ds = (await notion().dataSources.retrieve({ data_source_id: dsId("checklist") })) as { properties?: Record<string, unknown> };
+    if (ds.properties && P.bag in ds.properties) return;
+    await notion().dataSources.update({
+      data_source_id: dsId("checklist"),
+      properties: { [P.bag]: { select: { options: CHECKLIST_BAGS.map((name) => ({ name })) } } } as never,
+    });
+  })().catch((e) => {
+    bagReady = null; // 실패하면 다음 쓰기에서 다시 시도
+    throw e;
+  });
+  return bagReady;
+}
+
 export async function createChecklistItem(c: NewChecklistItem) {
+  await ensureBagProperty();
   const id = await create("checklist", checklistItemToProperties(c));
   revalidateTag(tag("checklist", c.tripId));
   return id;
 }
 /** 여러 개를 한 번에 추가 (기본 준비물). 노션 속도 제한을 고려해 순서대로 만든다. */
 export async function createChecklistItems(items: NewChecklistItem[]) {
+  await ensureBagProperty();
   for (const c of items) await create("checklist", checklistItemToProperties(c));
   if (items[0]) revalidateTag(tag("checklist", items[0].tripId));
 }
 export async function updateChecklistItem(id: string, c: NewChecklistItem) {
+  await ensureBagProperty();
   await update(id, checklistItemToProperties(c));
   revalidateTag(tag("checklist", c.tripId));
 }

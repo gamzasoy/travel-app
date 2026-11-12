@@ -9,6 +9,10 @@ export type PlaceCategory = (typeof PLACE_CATEGORIES)[number];
 export const CHECKLIST_CATEGORIES = ["서류", "돈·카드", "전자기기", "의류", "세면·화장", "약", "기타"] as const;
 export type ChecklistCategory = (typeof CHECKLIST_CATEGORIES)[number];
 
+/** 준비물을 어느 짐에 넣는지: 기내(들고 타는 가방) / 위탁(부치는 캐리어) */
+export const CHECKLIST_BAGS = ["기내", "위탁"] as const;
+export type ChecklistBag = (typeof CHECKLIST_BAGS)[number];
+
 export const RESERVATION_KINDS = ["항공", "렌트카", "숙소", "기차", "투어", "기타"] as const;
 export type ReservationKind = (typeof RESERVATION_KINDS)[number];
 
@@ -76,6 +80,8 @@ export interface ChecklistItem {
   tripId: string;
   title: string;
   category: ChecklistCategory | null;
+  /** 기내 반입 / 위탁 수하물. 정하지 않았으면 null */
+  bag: ChecklistBag | null;
   checked: boolean;
   order: number;
 }

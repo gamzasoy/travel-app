@@ -4,7 +4,7 @@ import { z } from "zod";
 import { requireSession } from "@/lib/auth";
 import { DEFAULT_CHECKLIST, nextChecklistOrder } from "@/lib/checklist";
 import * as repo from "@/lib/notion/repo";
-import { CHECKLIST_CATEGORIES } from "@/lib/types";
+import { CHECKLIST_BAGS, CHECKLIST_CATEGORIES } from "@/lib/types";
 import type { ActionResult } from "./expenses";
 
 const idSchema = z.string().min(10).max(64);
@@ -12,6 +12,7 @@ const idSchema = z.string().min(10).max(64);
 const itemInput = z.object({
   title: z.string().trim().min(1, "준비물을 입력해주세요.").max(100),
   category: z.enum(CHECKLIST_CATEGORIES).nullable(),
+  bag: z.enum(CHECKLIST_BAGS).nullable().default(null),
 });
 export type ChecklistInput = z.input<typeof itemInput>;
 
@@ -65,7 +66,7 @@ export async function addDefaultChecklist(): Promise<ActionResult> {
   const { tripId } = await requireSession();
   if ((await repo.listChecklist(tripId)).length > 0) return fail("이미 준비물이 있어요. 새로고침해 주세요.");
   await repo.createChecklistItems(
-    DEFAULT_CHECKLIST.map((d, i) => ({ tripId, title: d.title, category: d.category, checked: false, order: i })),
+    DEFAULT_CHECKLIST.map((d, i) => ({ tripId, ...d, checked: false, order: i })),
   );
   return { ok: true };
 }
