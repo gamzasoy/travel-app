@@ -47,3 +47,31 @@ export type BagFilter = ChecklistBag | "전체";
 /** 짐 필터: "전체" 면 그대로, 아니면 그 짐에 넣을 항목만 */
 export const filterByBag = <T extends Pick<ChecklistItem, "bag">>(items: T[], bag: BagFilter): T[] =>
   bag === "전체" ? items : items.filter((i) => i.bag === bag);
+
+/** 이름에 이 말이 들어가면 그 짐으로 추천 (앞에 있는 규칙이 먼저) */
+const BAG_KEYWORDS: [ChecklistBag, string[]][] = [
+  // 리튬 배터리는 위탁 불가, 귀중품·서류·비행 중 쓸 것은 기내
+  ["기내", ["배터리", "여권", "항공권", "예약 확인", "현금", "카드", "지갑", "충전기", "esim", "와이파이", "유심", "복용약", "귀마개", "안대", "목베개", "이어폰", "노트북", "카메라"]],
+  // 100ml 넘는 액체류·부피 큰 것은 위탁
+  ["위탁", ["옷", "신발", "세면", "화장품", "선크림", "샴푸", "로션", "어댑터", "돼지코", "상비약", "우산", "속옷", "양말"]],
+];
+
+/**
+ * 준비물 이름으로 짐(기내/위탁)을 추천한다. 모르면 null.
+ * 짐 기능이 생기기 전에 넣어 둔 항목을 한 번에 채울 때 쓴다.
+ */
+export function suggestBag(title: string): ChecklistBag | null {
+  const t = title.trim();
+  const preset = DEFAULT_CHECKLIST.find((d) => d.title === t);
+  if (preset) return preset.bag;
+  const lower = t.toLowerCase();
+  for (const [bag, words] of BAG_KEYWORDS) if (words.some((w) => lower.includes(w))) return bag;
+  return null;
+}
+
+/** 짐이 비어 있고 추천할 수 있는 항목들 */
+export const bagSuggestions = <T extends Pick<ChecklistItem, "id" | "title" | "bag">>(items: T[]) =>
+  items.flatMap((i) => {
+    const bag = i.bag ? null : suggestBag(i.title);
+    return bag ? [{ id: i.id, bag }] : [];
+  });
