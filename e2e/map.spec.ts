@@ -150,12 +150,12 @@ test("지도: 키 없음 안내 → 장소 추가 → 일정 연결 → 지도�
   await row.getByRole("button", { name: "이치란 시부야점 삭제" }).click();
   await expect(page.getByText("장소 (1)")).toBeVisible();
 
-  // 정리: 만든 일정도 지운다 (가짜 노션 상태를 다른 테스트와 공유하므로)
+  // 장소를 지우면 그 장소가 들어간 일정(저녁 라멘)도 일정 탭에서 사라진다
   await page.getByRole("link", { name: "일정", exact: true }).click();
-  await page.getByRole("button", { name: "저녁 라멘" }).click();
-  page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "삭제" }).click();
+  await expect(page.getByRole("button", { name: "아침 센소지" })).toBeVisible();
   await expect(page.getByRole("button", { name: "저녁 라멘" })).toHaveCount(0);
+
+  // 정리: 남은 일정도 지운다 (가짜 노션 상태를 다른 테스트와 공유하므로)
   await page.getByRole("button", { name: "아침 센소지" }).click();
   page.once("dialog", (d) => d.accept());
   await page.getByRole("button", { name: "삭제" }).click();
