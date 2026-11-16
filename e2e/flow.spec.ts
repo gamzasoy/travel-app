@@ -41,6 +41,15 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
   await expect(transfers.getByRole("listitem").filter({ hasText: "지은 → 민수" })).toContainText("₩9,000");
   await expect(transfers.getByRole("listitem").filter({ hasText: "현우 → 민수" })).toContainText("₩9,000");
 
+  // 각자 쓴 돈: 결제와 상관없이 3명 모두 내 몫 9,000원 (식비)
+  const spending = page.getByRole("list", { name: "각자 쓴 돈" });
+  await expect(spending.getByRole("listitem")).toHaveCount(3);
+  for (const who of ["민수", "지은", "현우"]) {
+    const li = spending.getByRole("listitem").filter({ hasText: who });
+    await expect(li).toContainText("₩9,000");
+    await expect(li).toContainText("식비 ₩9,000");
+  }
+
   // 자세히 보기: 접혀 있다가 열면 직접 정산 내역 (지출 하나라 송금과 같다)
   const direct = page.getByRole("list", { name: "직접 정산 내역" });
   await expect(direct).toBeHidden();

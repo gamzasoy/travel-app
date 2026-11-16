@@ -220,3 +220,33 @@ describe("minimizeTransfers", () => {
     ]);
   });
 });
+
+describe("spending", () => {
+  it("각자 쓴 돈은 결제자와 무관하게 참여한 지출의 내 몫 합계이고, 분류별로 나뉜다", () => {
+    const r = settle(
+      [
+        exp({ amount: 3000, category: "식비", payerId: "a" }), // a·b·c 1000씩
+        exp({ amount: 2000, category: "교통", payerId: "b", participantIds: ["a", "b"] }), // a·b 1000씩
+        exp({ amount: 600, category: null, payerId: "c", participantIds: ["c"] }), // 분류 없음 → 기타
+        exp({ amount: 5000, currency: "JPY", payerId: "a" }), // 환율 없음 → 제외
+      ],
+      members,
+      "KRW",
+      null,
+    );
+    expect(r.spending.map((s) => [s.memberId, s.total])).toEqual([
+      ["a", 2000],
+      ["b", 2000],
+      ["c", 1600],
+    ]);
+    expect(r.spending[0].byCategory).toEqual([
+      { category: "식비", amount: 1000 },
+      { category: "교통", amount: 1000 },
+    ]);
+    expect(r.spending[2].byCategory).toEqual([
+      { category: "식비", amount: 1000 },
+      { category: "기타", amount: 600 },
+    ]);
+    expect(sum(r.spending.map((s) => s.total))).toBe(r.total);
+  });
+});

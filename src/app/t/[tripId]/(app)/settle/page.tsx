@@ -24,6 +24,7 @@ export default async function SettlePage({
   const result = settle(expenses, members, currency, rate);
   const name = new Map(members.map((m) => [m.id, m.name]));
   const n = (id: string) => name.get(id) ?? "?";
+  const maxSpent = Math.max(0, ...result.spending.map((s) => s.total));
 
   const copyText = result.transfers.length
     ? [`${trip.name} 정산 (${currency === "JPY" ? "엔" : "원"})`, ...result.transfers.map((t) => `${n(t.from)} → ${n(t.to)} ${formatMoney(t.amount, currency)}`)].join("\n")
@@ -97,6 +98,31 @@ export default async function SettlePage({
           </details>
         )}
       </section>
+
+      {result.total > 0 && (
+        <section>
+          <h3 className="mb-1 text-sm font-semibold text-muted-foreground">각자 쓴 돈</h3>
+          <p className="mb-2 text-xs text-muted-foreground">누가 결제했든 상관없이 내 몫만 합친 금액이에요.</p>
+          <ul aria-label="각자 쓴 돈" className="divide-y divide-border rounded-xl border border-border">
+            {result.spending.map((s) => (
+              <li key={s.memberId} className="px-3 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{n(s.memberId)}</span>
+                  <span className="font-semibold">{formatMoney(s.total, currency)}</span>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${maxSpent > 0 ? (s.total / maxSpent) * 100 : 0}%` }} />
+                </div>
+                {s.byCategory.length > 0 && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    {s.byCategory.map((c) => `${c.category} ${formatMoney(c.amount, currency)}`).join(" · ")}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h3 className="mb-2 text-sm font-semibold text-muted-foreground">
