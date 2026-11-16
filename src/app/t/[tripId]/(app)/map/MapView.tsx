@@ -116,7 +116,7 @@ function MapContent({ days, defaultDay, items, places: serverPlaces, initialPlac
     },
     onVisited: (visited) => run(() => setPlaceVisited(p.id, visited), () => setVisitedOptimistic({ id: p.id, visited })),
     onDelete: () => {
-      if (confirm(`'${p.name}' 장소를 삭제할까요? 연결된 일정에서는 장소가 빠져요.`)) run(() => removePlace(p.id));
+      if (confirm(`'${p.name}' 장소를 삭제할까요? 이 장소가 들어간 일정도 함께 삭제돼요.`)) run(() => removePlace(p.id));
     },
   });
 

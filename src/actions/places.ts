@@ -138,6 +138,9 @@ export async function removePlace(placeId: string): Promise<ActionResult> {
   if (!id.success || !(await repo.listPlaces(tripId)).some((p) => p.id === id.data)) {
     return fail("장소를 찾을 수 없어요.");
   }
+  // 이 장소로 만든 일정도 함께 지운다 (장소만 지우면 일정 탭에 장소 없는 일정으로 남는다)
+  const linked = (await repo.listSchedule(tripId)).filter((i) => i.placeId === id.data);
+  for (const item of linked) await repo.deleteScheduleItem(item.id, tripId);
   await repo.deletePlace(id.data, tripId);
   return { ok: true };
 }

@@ -1,5 +1,5 @@
 import { convert } from "./currency";
-import type { Currency, Expense, Member } from "./types";
+import { EXPENSE_CATEGORIES, type Currency, type Expense, type ExpenseCategory, type Member } from "./types";
 
 export interface Balance {
   memberId: string;
@@ -9,6 +9,14 @@ export interface Balance {
   owed: number;
   /** paid - owed. 양수면 받을 돈, 음수면 보낼 돈 */
   balance: number;
+}
+
+/** 한 사람이 이번 여행에서 쓴 돈 = 참여한 지출의 내 몫 합계 (누가 결제했는지와 무관) */
+export interface Spending {
+  memberId: string;
+  total: number;
+  /** 분류별 금액 (금액 큰 순, 0원 분류는 제외). 분류 없는 지출은 "기타" */
+  byCategory: { category: ExpenseCategory; amount: number }[];
 }
 
 export interface Transfer {
@@ -22,6 +30,8 @@ export interface SettleResult {
   /** 정산 대상 지출 합계 */
   total: number;
   balances: Balance[];
+  /** 멤버별 쓴 돈 (멤버 순서) */
+  spending: Spending[];
   transfers: Transfer[];
   /**
    * 송금 횟수를 줄이지 않은 직접 정산: 각 지출의 참여자가 결제자에게 자기 몫을 보낸다고 보고,
@@ -108,6 +118,7 @@ export function settle(
   const paid = new Map(memberIds.map((id) => [id, 0]));
   const owed = new Map(memberIds.map((id) => [id, 0]));
   const debts = new Map<string, Map<string, number>>();
+  const spent = new Map(memberIds.map((id) => [id, new Map<ExpenseCategory, number>()]));
   const skipped: string[] = [];
   let total = 0;
 
@@ -125,6 +136,9 @@ export function settle(
     paid.set(e.payerId, (paid.get(e.payerId) ?? 0) + amount);
     for (const [id, share] of splitAmount(amount, participants, e.payerId)) {
       owed.set(id, (owed.get(id) ?? 0) + share);
+      const cats = spent.get(id);
+      const cat = e.category ?? "기타";
+      if (cats && share > 0) cats.set(cat, (cats.get(cat) ?? 0) + share);
       if (id !== e.payerId && share > 0) {
         const row = debts.get(id) ?? new Map<string, number>();
         row.set(e.payerId, (row.get(e.payerId) ?? 0) + share);
@@ -140,10 +154,20 @@ export function settle(
     balance: (paid.get(id) ?? 0) - (owed.get(id) ?? 0),
   }));
 
+  const catOrder = new Map(EXPENSE_CATEGORIES.map((c, i) => [c, i]));
+  const spending: Spending[] = memberIds.map((id) => ({
+    memberId: id,
+    total: owed.get(id) ?? 0,
+    byCategory: [...(spent.get(id) ?? new Map<ExpenseCategory, number>())]
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount || catOrder.get(a.category)! - catOrder.get(b.category)!),
+  }));
+
   return {
     currency,
     total,
     balances,
+    spending,
     transfers: minimizeTransfers(balances),
     directTransfers: netPairwise(debts, memberIds),
     skipped,
