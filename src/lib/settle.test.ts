@@ -249,4 +249,25 @@ describe("spending", () => {
     ]);
     expect(sum(r.spending.map((s) => s.total))).toBe(r.total);
   });
+
+  it("각자 쓴 돈의 상세 내역: 내 몫이 있는 지출만 날짜순으로, 내 몫 합계는 total 과 같다", () => {
+    const r = settle(
+      [
+        exp({ amount: 900, date: "2026-11-15", title: "점심", payerId: "b" }),
+        exp({ amount: 400, date: null, title: "날짜 없음", participantIds: ["a"] }),
+        exp({ amount: 3000, date: "2026-11-14", title: "숙소", participantIds: ["a", "b"] }),
+        exp({ amount: 500, date: "2026-11-14", title: "b 혼자", payerId: "b", participantIds: ["b"] }),
+      ],
+      members,
+      "KRW",
+      null,
+    );
+    const a = r.spending[0];
+    expect(a.items.map((i) => [i.title, i.share, i.amount, i.people, i.payerId])).toEqual([
+      ["숙소", 1500, 3000, 2, "a"],
+      ["점심", 300, 900, 3, "b"],
+      ["날짜 없음", 400, 400, 1, "a"],
+    ]);
+    for (const s of r.spending) expect(sum(s.items.map((i) => i.share))).toBe(s.total);
+  });
 });
