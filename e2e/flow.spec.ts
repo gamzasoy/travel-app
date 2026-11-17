@@ -43,12 +43,22 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
 
   // 각자 쓴 돈: 결제와 상관없이 3명 모두 내 몫 9,000원 (식비)
   const spending = page.getByRole("list", { name: "각자 쓴 돈" });
-  await expect(spending.getByRole("listitem")).toHaveCount(3);
+  const rows = spending.locator(":scope > li"); // 사람별 줄 (안쪽 상세 내역 목록은 제외)
+  await expect(rows).toHaveCount(3);
   for (const who of ["민수", "지은", "현우"]) {
-    const li = spending.getByRole("listitem").filter({ hasText: who });
+    const li = rows.filter({ has: page.locator("summary", { hasText: who }) });
     await expect(li).toContainText("₩9,000");
     await expect(li).toContainText("식비 ₩9,000");
   }
+
+  // 이름을 누르면 어디서 얼마 썼는지 상세 내역이 펼쳐진다
+  const jieunItems = page.getByRole("list", { name: "지은 지출 내역" });
+  await expect(jieunItems).toBeHidden();
+  await rows.locator("summary", { hasText: "지은" }).click();
+  await expect(jieunItems.getByRole("listitem")).toHaveCount(1);
+  await expect(jieunItems.getByRole("listitem")).toContainText("라멘");
+  await expect(jieunItems.getByRole("listitem")).toContainText("₩27,000 ÷ 3명 · 민수 결제");
+  await expect(jieunItems.getByRole("listitem")).toContainText("₩9,000");
 
   // 자세히 보기: 접혀 있다가 열면 직접 정산 내역 (지출 하나라 송금과 같다)
   const direct = page.getByRole("list", { name: "직접 정산 내역" });

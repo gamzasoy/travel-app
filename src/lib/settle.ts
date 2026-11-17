@@ -17,6 +17,22 @@ export interface Spending {
   total: number;
   /** 분류별 금액 (금액 큰 순, 0원 분류는 제외). 분류 없는 지출은 "기타" */
   byCategory: { category: ExpenseCategory; amount: number }[];
+  /** 내 몫이 있는 지출들 (날짜순, 날짜 없는 지출은 맨 뒤) */
+  items: SpendingItem[];
+}
+
+export interface SpendingItem {
+  expenseId: string;
+  title: string;
+  date: string | null;
+  category: ExpenseCategory | null;
+  payerId: string;
+  /** 정산 통화로 환산한 지출 전체 금액 */
+  amount: number;
+  /** 그중 내 몫 */
+  share: number;
+  /** 함께 나눈 사람 수 */
+  people: number;
 }
 
 export interface Transfer {
@@ -119,6 +135,7 @@ export function settle(
   const owed = new Map(memberIds.map((id) => [id, 0]));
   const debts = new Map<string, Map<string, number>>();
   const spent = new Map(memberIds.map((id) => [id, new Map<ExpenseCategory, number>()]));
+  const spentItems = new Map<string, SpendingItem[]>(memberIds.map((id) => [id, []]));
   const skipped: string[] = [];
   let total = 0;
 
@@ -139,6 +156,18 @@ export function settle(
       const cats = spent.get(id);
       const cat = e.category ?? "기타";
       if (cats && share > 0) cats.set(cat, (cats.get(cat) ?? 0) + share);
+      if (share > 0) {
+        spentItems.get(id)?.push({
+          expenseId: e.id,
+          title: e.title,
+          date: e.date,
+          category: e.category,
+          payerId: e.payerId,
+          amount,
+          share,
+          people: participants.length,
+        });
+      }
       if (id !== e.payerId && share > 0) {
         const row = debts.get(id) ?? new Map<string, number>();
         row.set(e.payerId, (row.get(e.payerId) ?? 0) + share);
@@ -161,6 +190,8 @@ export function settle(
     byCategory: [...(spent.get(id) ?? new Map<ExpenseCategory, number>())]
       .map(([category, amount]) => ({ category, amount }))
       .sort((a, b) => b.amount - a.amount || catOrder.get(a.category)! - catOrder.get(b.category)!),
+    // 날짜순(같은 날은 입력 순서 유지), 날짜 없는 지출은 맨 뒤
+    items: (spentItems.get(id) ?? []).sort((a, b) => (a.date ?? "9999").localeCompare(b.date ?? "9999")),
   }));
 
   return {

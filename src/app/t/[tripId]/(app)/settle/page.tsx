@@ -4,6 +4,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { formatMoney } from "@/lib/currency";
 import { getTrip, listExpenses, listMembers } from "@/lib/notion/repo";
 import { getRate } from "@/lib/rate";
+import { dayLabel } from "@/lib/schedule";
 import { settle } from "@/lib/settle";
 import type { Currency } from "@/lib/types";
 
@@ -24,7 +25,7 @@ export default async function SettlePage({
   const result = settle(expenses, members, currency, rate);
   const name = new Map(members.map((m) => [m.id, m.name]));
   const n = (id: string) => name.get(id) ?? "?";
-  const maxSpent = Math.max(0, ...result.spending.map((s) => s.total));
+  const maxSpent =Math.max(0, ...result.spending.map((s) => s.total));
 
   const copyText = result.transfers.length
     ? [`${trip.name} 정산 (${currency === "JPY" ? "엔" : "원"})`, ...result.transfers.map((t) => `${n(t.from)} → ${n(t.to)} ${formatMoney(t.amount, currency)}`)].join("\n")
@@ -105,19 +106,59 @@ export default async function SettlePage({
           <p className="mb-2 text-xs text-muted-foreground">누가 결제했든 상관없이 내 몫만 합친 금액이에요.</p>
           <ul aria-label="각자 쓴 돈" className="divide-y divide-border rounded-xl border border-border">
             {result.spending.map((s) => (
-              <li key={s.memberId} className="px-3 py-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{n(s.memberId)}</span>
-                  <span className="font-semibold">{formatMoney(s.total, currency)}</span>
-                </div>
-                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${maxSpent > 0 ? (s.total / maxSpent) * 100 : 0}%` }} />
-                </div>
-                {s.byCategory.length > 0 && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    {s.byCategory.map((c) => `${c.category} ${formatMoney(c.amount, currency)}`).join(" · ")}
-                  </p>
-                )}
+              <li key={s.memberId} className="text-sm">
+                <details className="group">
+                  <summary className="cursor-pointer list-none px-3 py-3 [&::-webkit-details-marker]:hidden">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">
+                        {n(s.memberId)}
+                        <span className="ml-1 text-xs text-muted-foreground group-open:hidden" aria-hidden>
+                          ▸ 내역
+                        </span>
+                        <span className="ml-1 hidden text-xs text-muted-foreground group-open:inline" aria-hidden>
+                          ▾ 접기
+                        </span>
+                      </span>
+                      <span className="font-semibold">{formatMoney(s.total, currency)}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${maxSpent > 0 ? (s.total / maxSpent) * 100 : 0}%` }} />
+                    </div>
+                    {s.byCategory.length > 0 && (
+                      <p className="mt-1.5 text-xs text-muted-foreground">
+                        {s.byCategory.map((c) => `${c.category} ${formatMoney(c.amount, currency)}`).join(" · ")}
+                      </p>
+                    )}
+                  </summary>
+                  {s.items.length === 0 ? (
+                    <p className="border-t border-border px-3 py-3 text-xs text-muted-foreground">쓴 돈이 없어요.</p>
+                  ) : (
+                    <ul aria-label={`${n(s.memberId)} 지출 내역`} className="divide-y divide-border border-t border-border bg-muted/40">
+                      {s.items.map((it, i) => (
+                        <li key={it.expenseId}>
+                          {(i === 0 || s.items[i - 1].date !== it.date) && (
+                            <p className="px-3 pt-2 text-xs font-semibold text-muted-foreground">{it.date ? dayLabel(it.date) : "날짜 없음"}</p>
+                          )}
+                          <div className="flex items-start justify-between gap-3 px-3 py-2">
+                            <span className="min-w-0">
+                              <span className="block break-words">{it.title || "(제목 없음)"}</span>
+                              <span className="block text-xs text-muted-foreground">
+                                {[
+                                  it.category,
+                                  it.people === 1 ? "혼자" : `${formatMoney(it.amount, currency)} ÷ ${it.people}명`,
+                                  `${n(it.payerId)} 결제`,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            </span>
+                            <span className="shrink-0 font-medium">{formatMoney(it.share, currency)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </details>
               </li>
             ))}
           </ul>
