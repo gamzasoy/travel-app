@@ -41,6 +41,15 @@ test("PIN 입장 → 엔화 지출 추가 → 정산", async ({ page }) => {
   await expect(transfers.getByRole("listitem").filter({ hasText: "지은 → 민수" })).toContainText("₩9,000");
   await expect(transfers.getByRole("listitem").filter({ hasText: "현우 → 민수" })).toContainText("₩9,000");
 
+  // 분류별 원형 차트: 전체 → 식비 100%, 사람을 고르면 그 사람 몫
+  const pieLegend = page.getByRole("list", { name: "전체 분류별 금액" });
+  await expect(pieLegend.getByRole("listitem")).toHaveCount(1);
+  await expect(pieLegend).toContainText("식비");
+  await expect(pieLegend).toContainText("100%");
+  await expect(pieLegend).toContainText("₩27,000");
+  await page.getByRole("group", { name: "차트 대상" }).getByRole("button", { name: "지은" }).click();
+  await expect(page.getByRole("list", { name: "지은 분류별 금액" })).toContainText("₩9,000");
+
   // 각자 쓴 돈: 결제와 상관없이 3명 모두 내 몫 9,000원 (식비)
   const spending = page.getByRole("list", { name: "각자 쓴 돈" });
   const rows = spending.locator(":scope > li"); // 사람별 줄 (안쪽 상세 내역 목록은 제외)

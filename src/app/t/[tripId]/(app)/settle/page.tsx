@@ -4,9 +4,10 @@ import { CopyButton } from "@/components/CopyButton";
 import { formatMoney } from "@/lib/currency";
 import { getTrip, listExpenses, listMembers } from "@/lib/notion/repo";
 import { getRate } from "@/lib/rate";
+import { CategoryPie, type PieView } from "./CategoryPie";
 import { dayLabel } from "@/lib/schedule";
 import { settle } from "@/lib/settle";
-import type { Currency } from "@/lib/types";
+import type { Currency, ExpenseCategory } from "@/lib/types";
 
 export default async function SettlePage({
   params,
@@ -25,7 +26,15 @@ export default async function SettlePage({
   const result = settle(expenses, members, currency, rate);
   const name = new Map(members.map((m) => [m.id, m.name]));
   const n = (id: string) => name.get(id) ?? "?";
-  const maxSpent =Math.max(0, ...result.spending.map((s) => s.total));
+  const maxSpent = Math.max(0, ...result.spending.map((s) => s.total));
+
+  // 원형 차트: 전체(모든 사람 몫의 합 = 분류별 지출 합계) + 사람별
+  const allByCategory = new Map<ExpenseCategory, number>();
+  for (const s of result.spending) for (const c of s.byCategory) allByCategory.set(c.category, (allByCategory.get(c.category) ?? 0) + c.amount);
+  const pieViews: PieView[] = [
+    { key: "all", label: "전체", total: result.total, byCategory: [...allByCategory].map(([category, amount]) => ({ category, amount })) },
+    ...result.spending.map((s) => ({ key: s.memberId, label: n(s.memberId), total: s.total, byCategory: s.byCategory })),
+  ];
 
   const copyText = result.transfers.length
     ? [`${trip.name} 정산 (${currency === "JPY" ? "엔" : "원"})`, ...result.transfers.map((t) => `${n(t.from)} → ${n(t.to)} ${formatMoney(t.amount, currency)}`)].join("\n")
@@ -99,6 +108,13 @@ export default async function SettlePage({
           </details>
         )}
       </section>
+
+      {result.total > 0 && (
+        <section>
+          <h3 className="mb-2 text-sm font-semibold text-muted-foreground">분류별 지출</h3>
+          <CategoryPie views={pieViews} currency={currency} />
+        </section>
+      )}
 
       {result.total > 0 && (
         <section>
